@@ -1,10 +1,8 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
 import { AnimatePresence, motion } from 'framer-motion';
-import { theme } from './theme';
 import { AppProvider } from './context/AppContext';
+import { ThemeModeProvider } from './context/ThemeContext';
 import NavBar from './components/NavBar';
 import PageLayout from './components/PageLayout';
 import Home from './pages/Home';
@@ -54,8 +52,7 @@ function AnimatedRoutes() {
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <ThemeModeProvider>
       <AppProvider>
         <BrowserRouter>
           <NavBar />
@@ -64,7 +61,7 @@ function App() {
           </PageLayout>
         </BrowserRouter>
       </AppProvider>
-    </ThemeProvider>
+    </ThemeModeProvider>
   );
 }
 

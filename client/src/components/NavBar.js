@@ -17,6 +17,10 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
+import Tooltip from '@mui/material/Tooltip';
+import LightModeIcon from '@mui/icons-material/LightMode';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import { useThemeMode } from '../context/ThemeContext';
 
 const navItems = [
   { text: 'Home', path: '/', icon: HomeIcon },
@@ -29,6 +33,7 @@ export default function NavBar() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const location = useLocation();
+  const { mode, toggleMode } = useThemeMode();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -109,7 +114,7 @@ export default function NavBar() {
           </Box>
 
           {!isMobile && (
-            <Box sx={{ display: 'flex', gap: 1 }}>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
               {navItems.map(({ text, path }) => (
                 <Button
                   key={text}
@@ -134,6 +139,20 @@ export default function NavBar() {
                   {text}
                 </Button>
               ))}
+              <Tooltip title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+                <IconButton
+                  color="inherit"
+                  onClick={toggleMode}
+                  sx={{ ml: 1 }}
+                  aria-label="toggle theme"
+                >
+                  {mode === 'dark' ? (
+                    <LightModeIcon color="secondary" />
+                  ) : (
+                    <DarkModeIcon />
+                  )}
+                </IconButton>
+              </Tooltip>
             </Box>
           )}
         </Toolbar>

@@ -7,6 +7,8 @@ import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import CheckIcon from '@mui/icons-material/Check';
+import Tooltip from '@mui/material/Tooltip';
 import Chip from '@mui/material/Chip';
 import Box from '@mui/material/Box';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
@@ -14,7 +16,7 @@ import CategoryIcon from '@mui/icons-material/Category';
 import { alpha } from '@mui/material/styles';
 
 export default function TaskCard({ task, onEdit, onDelete, onComplete }) {
-  const { title, description, category, tags, durationHours, completed, completedAt, _id } = task;
+  const { title, description, category, tags, durationHours, completed, _id } = task;
   // Timer state (in seconds)
   const initialSeconds = Math.round((durationHours || 0) * 3600);
   const [secondsLeft, setSecondsLeft] = useState(initialSeconds);
@@ -23,7 +25,7 @@ export default function TaskCard({ task, onEdit, onDelete, onComplete }) {
 
   // Start timer on mount if not completed
   useEffect(() => {
-    if (!completed && secondsLeft > 0 && timerActive) {
+    if (!completed && timerActive) {
       timerRef.current = setInterval(() => {
         setSecondsLeft(prev => prev > 0 ? prev - 1 : 0);
       }, 1000);
@@ -153,15 +155,6 @@ export default function TaskCard({ task, onEdit, onDelete, onComplete }) {
         )}
       </CardContent>
       <CardActions sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, pt: 0 }}>
-        <Button
-          size="small"
-          color={completed ? "success" : "primary"}
-          onClick={() => onComplete(task._id)}
-          variant={completed ? "contained" : "outlined"}
-          sx={{ fontWeight: 600, minWidth: 120, bgcolor: completed ? 'success.main' : undefined, color: completed ? 'white' : undefined, '&:hover': completed ? { bgcolor: 'success.dark' } : {} }}
-        >
-          {completed ? "Completed" : "Mark Complete"}
-        </Button>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <IconButton aria-label="Edit" color="secondary" onClick={() => onEdit(task)}>
             <EditIcon />
@@ -169,6 +162,27 @@ export default function TaskCard({ task, onEdit, onDelete, onComplete }) {
           <IconButton aria-label="Delete" color="error" onClick={() => onDelete(task._id)}>
             <DeleteIcon />
           </IconButton>
+        </Box>
+        <Box>
+          <Tooltip title="Mark as complete" arrow>
+            <IconButton
+              aria-label={completed ? 'Completed' : 'Mark complete'}
+              onClick={() => onComplete(task._id)}
+              sx={{
+                width: 40,
+                height: 40,
+                bgcolor: completed ? 'success.main' : 'transparent',
+                color: completed ? 'common.white' : 'success.main',
+                border: completed ? 'none' : theme => `2px solid ${theme.palette.success.main}`,
+                '&:hover': {
+                  bgcolor: completed ? 'success.dark' : theme => `${theme.palette.success.main}10`,
+                },
+                borderRadius: '50%'
+              }}
+            >
+              <CheckIcon />
+            </IconButton>
+          </Tooltip>
         </Box>
       </CardActions>
     </Card>

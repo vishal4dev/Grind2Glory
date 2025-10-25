@@ -20,11 +20,15 @@ export default function ProgressCard({ title, current, goal, reward, isCompleted
       transition={{ duration: 0.3 }}
       sx={{
         height: '100%',
-        background: theme => `linear-gradient(135deg, ${
-          isCompleted 
-            ? 'rgba(124, 58, 237, 0.12) 0%, rgba(124, 58, 237, 0.05) 100%'
-            : 'rgba(255, 255, 255, 1) 0%, rgba(249, 250, 251, 1) 100%'
-        })`,
+        background: theme => {
+          const base = theme.palette.mode === 'dark'
+            ? 'linear-gradient(135deg, rgba(30,30,30,1) 0%, rgba(18,18,18,1) 100%)'
+            : 'linear-gradient(135deg, rgba(255,255,255,1) 0%, rgba(249,250,251,1) 100%)';
+          const overlay = isCompleted
+            ? 'linear-gradient(135deg, rgba(124,58,237,0.12) 0%, rgba(124,58,237,0.06) 100%)'
+            : '';
+          return overlay ? `${overlay}, ${base}` : base;
+        },
         borderRadius: 2,
         overflow: 'hidden',
         position: 'relative'
@@ -69,10 +73,13 @@ export default function ProgressCard({ title, current, goal, reward, isCompleted
             sx={{
               height: 8,
               borderRadius: 4,
-              backgroundColor: 'rgba(0,0,0,0.05)',
+              backgroundColor: theme => (theme.palette.mode === 'dark' ? 'grey.800' : 'rgba(0,0,0,0.05)'),
               '& .MuiLinearProgress-bar': {
                 borderRadius: 4,
-                background: theme => `linear-gradient(90deg, ${theme.palette.secondary.main}, ${theme.palette.primary.main})`
+                background: theme => `linear-gradient(90deg, ${theme.palette.secondary.main}, ${theme.palette.primary.main})`,
+                boxShadow: theme => (theme.palette.mode === 'dark'
+                  ? '0 0 8px rgba(124,58,237,0.6), 0 0 16px rgba(124,58,237,0.3)'
+                  : 'none')
               }
             }}
           />
@@ -93,7 +100,7 @@ export default function ProgressCard({ title, current, goal, reward, isCompleted
             display: 'flex', 
             alignItems: 'center', 
             gap: 1.5,
-            backgroundColor: 'rgba(0,0,0,0.02)',
+            backgroundColor: theme => (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.02)'),
             p: 2,
             borderRadius: 1
           }}

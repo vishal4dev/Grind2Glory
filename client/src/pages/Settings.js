@@ -75,7 +75,9 @@ export default function Settings() {
             sx={{ 
               height: '100%',
               background: theme => 
-                'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(249, 250, 251, 1) 100%)'
+                theme.palette.mode === 'dark'
+                  ? 'linear-gradient(135deg, rgba(30,30,30,1) 0%, rgba(18,18,18,1) 100%)'
+                  : 'linear-gradient(135deg, rgba(255,255,255,1) 0%, rgba(249,250,251,1) 100%)'
             }}
           >
             <CardContent>
@@ -123,7 +125,9 @@ export default function Settings() {
             sx={{ 
               height: '100%',
               background: theme => 
-                'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(249, 250, 251, 1) 100%)'
+                theme.palette.mode === 'dark'
+                  ? 'linear-gradient(135deg, rgba(30,30,30,1) 0%, rgba(18,18,18,1) 100%)'
+                  : 'linear-gradient(135deg, rgba(255,255,255,1) 0%, rgba(249,250,251,1) 100%)'
             }}
           >
             <CardContent>

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
 import LinearProgress from '@mui/material/LinearProgress';
 import Typography from '@mui/material/Typography';
+import { alpha, keyframes } from '@mui/material/styles';
 // import Tooltip from '@mui/material/Tooltip';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
@@ -58,7 +59,7 @@ export default function CompletionProgress() {
   }
 
   return (
-    <Box sx={{ position: 'relative', width: '100%', mb: 4, px: 2 }}>
+    <Box sx={{ position: 'relative', width: '100%', mb: 4 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
         <Typography variant="h6" sx={{ flexGrow: 1 }}>
           Completion Progress
@@ -75,12 +76,38 @@ export default function CompletionProgress() {
           </Box>
         )}
       </Box>
-      <Box sx={{ position: 'relative', height: 36, display: 'flex', alignItems: 'center' }}>
+      <Box sx={{ position: 'relative', height: 70, display: 'flex', alignItems: 'flex-start', pt: 1, overflow: 'visible' }}>
         <LinearProgress
           variant="determinate"
           value={progressPct}
-          sx={{ height: 10, borderRadius: 5, flex: 1, bgcolor: 'grey.200',
-            '& .MuiLinearProgress-bar': { bgcolor: 'success.main' }
+          sx={{
+            height: 14,
+            borderRadius: 999,
+            flex: 1,
+            bgcolor: theme => 
+              theme.palette.mode === 'dark'
+                ? alpha(theme.palette.secondary.main, 0.12)
+                : alpha(theme.palette.secondary.main, 0.08),
+            border: theme => `1.5px solid ${alpha(theme.palette.secondary.main, 0.2)}`,
+            boxShadow: theme =>
+              theme.palette.mode === 'dark'
+                ? `inset 0 2px 4px ${alpha('#000', 0.4)}`
+                : `inset 0 1px 3px ${alpha('#000', 0.08)}`,
+            '& .MuiLinearProgress-bar': {
+              borderRadius: 999,
+              background: theme => `linear-gradient(90deg, ${theme.palette.secondary.main}, ${theme.palette.secondary.light}, ${theme.palette.secondary.main})`,
+              backgroundSize: '200% 100%',
+              animation: `${keyframes`
+                0% { background-position: 0% 50%; }
+                50% { background-position: 100% 50%; }
+                100% { background-position: 0% 50%; }
+              `} 3s ease infinite`,
+              boxShadow: theme =>
+                theme.palette.mode === 'dark'
+                  ? `0 0 12px ${alpha(theme.palette.secondary.main, 0.8)}, 0 0 24px ${alpha(theme.palette.secondary.main, 0.4)}, inset 0 1px 0 ${alpha('#fff', 0.2)}`
+                  : `0 2px 8px ${alpha(theme.palette.secondary.main, 0.3)}, inset 0 1px 0 ${alpha('#fff', 0.6)}`,
+              transition: 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
+            }
           }}
         />
         {/* Checkpoints */}
@@ -91,34 +118,59 @@ export default function CompletionProgress() {
             key={cp.key}
             sx={{
               position: 'absolute',
-              left: `calc(${cp.pct}% - 16px)`,
-              top: -8,
+              left: `calc(${cp.pct}% - 20px)`,
+              top: 24,
               zIndex: 2,
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               cursor: 'pointer',
-              minWidth: 32
+              minWidth: 40,
+              transition: 'transform 0.2s ease',
+              '&:hover': {
+                transform: 'translateY(-2px)'
+              }
             }}
             onMouseEnter={() => setHovered(cp.key)}
             onMouseLeave={() => setHovered(null)}
           >
             {cp.done ? (
-              <CheckCircleIcon sx={{ color: 'success.main' }} fontSize="medium" />
+              <CheckCircleIcon 
+                sx={{ 
+                  color: 'success.main',
+                  filter: theme => theme.palette.mode === 'dark' ? 'drop-shadow(0 0 4px rgba(76,175,80,0.6))' : 'none',
+                  transition: 'all 0.3s ease'
+                }} 
+                fontSize="medium" 
+              />
             ) : (
-              <RadioButtonUncheckedIcon sx={{ color: 'success.light' }} fontSize="medium" />
+              <RadioButtonUncheckedIcon 
+                sx={{ 
+                  color: theme => alpha(theme.palette.success.main, 0.5),
+                  transition: 'all 0.3s ease'
+                }} 
+                fontSize="medium" 
+              />
             )}
             <Typography
               variant="caption"
               sx={{
-                mt: 0.5,
+                mt: 0.75,
                 fontWeight: 700,
+                fontSize: '0.7rem',
                 color: cp.done ? 'success.main' : 'text.secondary',
                 letterSpacing: 0.5,
-                textShadow: '0 1px 4px #fff',
-                bgcolor: hovered === cp.key ? 'primary.light' : 'transparent',
-                borderRadius: 1,
-                px: 1
+                bgcolor: theme => hovered === cp.key 
+                  ? alpha(theme.palette.secondary.main, 0.15)
+                  : 'transparent',
+                border: theme => hovered === cp.key
+                  ? `1px solid ${alpha(theme.palette.secondary.main, 0.3)}`
+                  : 'none',
+                borderRadius: 999,
+                px: 1,
+                py: 0.25,
+                transition: 'all 0.2s ease',
+                whiteSpace: 'nowrap'
               }}
             >
               {cp.label}
