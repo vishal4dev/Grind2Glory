@@ -7,6 +7,7 @@ import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 import InputAdornment from '@mui/material/InputAdornment';
+import Chip from '@mui/material/Chip';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
 import SortIcon from '@mui/icons-material/Sort';
@@ -19,8 +20,11 @@ const sortOptions = [
   { value: 'newest', label: 'Newest First' },
   { value: 'oldest', label: 'Oldest First' },
   { value: 'durationAsc', label: 'Duration: Low to High' },
-  { value: 'durationDesc', label: 'Duration: High to Low' }
+  { value: 'durationDesc', label: 'Duration: High to Low' },
+  { value: 'priorityHighToLow', label: 'Priority: High to Low' }
 ];
+
+const priorityOrder = { high: 3, medium: 2, low: 1, none: 0 };
 
 
 export default function Home() {
@@ -52,6 +56,7 @@ export default function Home() {
   };
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('newest');
+  const [priorityFilter, setPriorityFilter] = useState('all');
   const [formOpen, setFormOpen] = useState(false);
   const [editTask, setEditTask] = useState(null);
 
@@ -72,6 +77,10 @@ export default function Home() {
         task.tags.some(tag => tag.toLowerCase().includes(searchLower))
       );
     }
+    // Apply priority filter
+    if (priorityFilter !== 'all') {
+      result = result.filter(task => (task.priority || 'none') === priorityFilter);
+    }
     // Apply sorting
     switch (sortBy) {
       case 'oldest':
@@ -83,11 +92,18 @@ export default function Home() {
       case 'durationDesc':
         result.sort((a, b) => b.durationHours - a.durationHours);
         break;
+      case 'priorityHighToLow':
+        result.sort((a, b) => {
+          const priorityA = priorityOrder[a.priority || 'none'];
+          const priorityB = priorityOrder[b.priority || 'none'];
+          return priorityB - priorityA;
+        });
+        break;
       default: // newest
         result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     }
     return result;
-  }, [tasks, search, sortBy]);
+  }, [tasks, search, sortBy, priorityFilter]);
 
   return (
     <Box sx={{ p: { xs: 1, sm: 3 }, maxWidth: 900, mx: 'auto' }}>
@@ -107,6 +123,48 @@ export default function Home() {
       <CompletionProgress />
       {/* Tasks Block */}
       <Box sx={{ mt: 4, p: 3, bgcolor: 'background.paper', borderRadius: 3, boxShadow: 1 }}>
+        {/* Priority Filter Chips */}
+        <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
+          <Chip
+            label="All"
+            onClick={() => setPriorityFilter('all')}
+            color={priorityFilter === 'all' ? 'primary' : 'default'}
+            variant={priorityFilter === 'all' ? 'filled' : 'outlined'}
+          />
+          <Chip
+            label="High Priority"
+            onClick={() => setPriorityFilter('high')}
+            sx={{
+              bgcolor: priorityFilter === 'high' ? '#ef4444' : 'transparent',
+              color: priorityFilter === 'high' ? 'white' : '#ef4444',
+              borderColor: '#ef4444',
+              '&:hover': { bgcolor: priorityFilter === 'high' ? '#dc2626' : 'rgba(239, 68, 68, 0.08)' }
+            }}
+            variant="outlined"
+          />
+          <Chip
+            label="Medium Priority"
+            onClick={() => setPriorityFilter('medium')}
+            sx={{
+              bgcolor: priorityFilter === 'medium' ? '#f97316' : 'transparent',
+              color: priorityFilter === 'medium' ? 'white' : '#f97316',
+              borderColor: '#f97316',
+              '&:hover': { bgcolor: priorityFilter === 'medium' ? '#ea580c' : 'rgba(249, 115, 22, 0.08)' }
+            }}
+            variant="outlined"
+          />
+          <Chip
+            label="Low Priority"
+            onClick={() => setPriorityFilter('low')}
+            sx={{
+              bgcolor: priorityFilter === 'low' ? '#22c55e' : 'transparent',
+              color: priorityFilter === 'low' ? 'white' : '#22c55e',
+              borderColor: '#22c55e',
+              '&:hover': { bgcolor: priorityFilter === 'low' ? '#16a34a' : 'rgba(34, 197, 94, 0.08)' }
+            }}
+            variant="outlined"
+          />
+        </Box>
         {/* Search and Sort */}
         <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
           <TextField

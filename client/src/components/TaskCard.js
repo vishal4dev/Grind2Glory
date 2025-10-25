@@ -1,9 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardActions from '@mui/material/CardActions';
 import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -13,46 +12,21 @@ import Chip from '@mui/material/Chip';
 import Box from '@mui/material/Box';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CategoryIcon from '@mui/icons-material/Category';
+import FlagIcon from '@mui/icons-material/Flag';
 import { alpha } from '@mui/material/styles';
+
+const priorityConfig = {
+  high: { color: '#ef4444', label: 'High', glow: '0 0 12px rgba(239, 68, 68, 0.3)' },
+  medium: { color: '#f97316', label: 'Medium', glow: 'none' },
+  low: { color: '#22c55e', label: 'Low', glow: 'none' },
+  none: { color: 'transparent', label: '', glow: 'none' }
+};
 
 export default function TaskCard({ task, onEdit, onDelete, onComplete }) {
   const { title, description, category, tags, durationHours, completed, _id } = task;
-  // Timer state (in seconds)
-  const initialSeconds = Math.round((durationHours || 0) * 3600);
-  const [secondsLeft, setSecondsLeft] = useState(initialSeconds);
-  const [timerActive, setTimerActive] = useState(false);
-  const timerRef = useRef();
-
-  // Start timer on mount if not completed
-  useEffect(() => {
-    if (!completed && timerActive) {
-      timerRef.current = setInterval(() => {
-        setSecondsLeft(prev => prev > 0 ? prev - 1 : 0);
-      }, 1000);
-    }
-    return () => clearInterval(timerRef.current);
-  }, [timerActive, completed]);
-
-  // Auto-complete when timer hits 0
-  useEffect(() => {
-    if (!completed && secondsLeft === 0 && timerActive) {
-      setTimerActive(false);
-      onComplete(_id);
-    }
-  }, [secondsLeft, completed, timerActive, onComplete, _id]);
-
-  // Reset timer if durationHours changes (e.g., on edit)
-  useEffect(() => {
-    setSecondsLeft(initialSeconds);
-  }, [initialSeconds]);
-
-  // Format timer display
-  const formatTime = (secs) => {
-    const h = Math.floor(secs / 3600);
-    const m = Math.floor((secs % 3600) / 60);
-    const s = secs % 60;
-    return `${h > 0 ? h + 'h ' : ''}${m}m ${s}s`;
-  };
+  // Normalize priority value
+  const priority = task.priority || 'none';
+  const priorityStyle = priorityConfig[priority] || priorityConfig.none;
 
   return (
     <Card 
@@ -60,54 +34,34 @@ export default function TaskCard({ task, onEdit, onDelete, onComplete }) {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
+        position: 'relative',
+        overflow: 'visible',
         transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+        borderLeft: priority !== 'none' ? `4px solid ${priorityStyle.color}` : 'none',
+        boxShadow: theme => priority === 'high' 
+          ? `${priorityStyle.glow}, 0 4px 6px -1px rgba(0,0,0,0.1)`
+          : '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)',
         '&:hover': {
           transform: 'translateY(-2px)',
-          boxShadow: theme => `0 8px 24px ${alpha(theme.palette.primary.main, 0.15)}`
+          boxShadow: theme => priority === 'high'
+            ? `${priorityStyle.glow}, 0 8px 24px ${alpha(theme.palette.primary.main, 0.15)}`
+            : `0 8px 24px ${alpha(theme.palette.primary.main, 0.15)}`
         }
       }}
     >
       <CardContent sx={{ flexGrow: 1, position: 'relative' }}>
-        {/* Timer at top right */}
-        {!completed && (
-          <Box
+        {/* Main block content */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+          <Typography 
+            variant="h6" 
+            component="h2"
             sx={{
-              position: 'absolute',
-              top: 12,
-              right: 12,
-              background: 'transparent',
-              borderRadius: 1,
-              px: 1.5,
-              py: 1,
-              minWidth: 110,
-              zIndex: 2,
-              textAlign: 'center',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 0.5
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
+              wordBreak: 'break-word',
+              hyphens: 'auto'
             }}
           >
-            <Typography variant="caption" color="text.secondary" fontWeight={500}>
-              Timer
-            </Typography>
-            <Typography variant="body2" color="text.primary" fontWeight={600}>
-              {formatTime(secondsLeft)}
-            </Typography>
-            <Button
-              size="small"
-              variant="outlined"
-              color={timerActive ? 'warning' : 'primary'}
-              onClick={() => setTimerActive((prev) => !prev)}
-              sx={{ minWidth: 0, px: 1, py: 0, fontSize: 12 }}
-            >
-              {timerActive ? 'Pause' : 'Start'}
-            </Button>
-          </Box>
-        )}
-        {/* Main block content */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-          <Typography variant="h6" gutterBottom component="h2">
             {title}
           </Typography>
         </Box>
@@ -115,12 +69,26 @@ export default function TaskCard({ task, onEdit, onDelete, onComplete }) {
           <Typography 
             variant="body2" 
             color="text.secondary"
-            sx={{ mb: 2 }}
+            sx={{ 
+              mb: 2,
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
+              wordBreak: 'break-word',
+              hyphens: 'auto'
+            }}
           >
             {description}
           </Typography>
         )}
-        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+        <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+          {priority !== 'none' && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <FlagIcon fontSize="small" sx={{ color: priorityStyle.color }} />
+              <Typography variant="body2" sx={{ color: priorityStyle.color, fontWeight: 600 }}>
+                {priorityStyle.label}
+              </Typography>
+            </Box>
+          )}
           {category && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <CategoryIcon fontSize="small" color="action" />

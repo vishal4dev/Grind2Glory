@@ -15,8 +15,8 @@ router.get('/', async (req, res) => {
 // POST /api/tasks - create task
 router.post('/', async (req, res) => {
   try {
-    const { title, description, category, tags, durationHours } = req.body;
-    const task = new Task({ title, description, category, tags, durationHours });
+    const { title, description, category, tags, durationHours, priority } = req.body;
+    const task = new Task({ title, description, category, tags, durationHours, priority });
     await task.save();
     res.status(201).json(task);
   } catch (err) {

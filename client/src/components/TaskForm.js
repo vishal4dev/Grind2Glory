@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
@@ -6,8 +6,8 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
+import MenuItem from '@mui/material/MenuItem';
 
 export default function TaskForm({ open, onClose, onSubmit, initialData = null }) {
   const [form, setForm] = useState({
@@ -16,6 +16,7 @@ export default function TaskForm({ open, onClose, onSubmit, initialData = null }
     category: '',
     tags: [],
     durationHours: 1,
+    priority: 'none',
     completed: false,
     completedAt: null,
     ...initialData
@@ -23,10 +24,42 @@ export default function TaskForm({ open, onClose, onSubmit, initialData = null }
 
   const [tagInput, setTagInput] = useState('');
 
+  // Sync form state when initialData changes or dialog opens
+  useEffect(() => {
+    if (open) {
+      if (initialData) {
+        // Editing mode - load task data
+        setForm({
+          title: '',
+          description: '',
+          category: '',
+          tags: [],
+          durationHours: 1,
+          priority: 'none',
+          completed: false,
+          completedAt: null,
+          ...initialData
+        });
+      } else {
+        // Add mode - reset to empty form
+        setForm({
+          title: '',
+          description: '',
+          category: '',
+          tags: [],
+          durationHours: 1,
+          priority: 'none',
+          completed: false,
+          completedAt: null
+        });
+      }
+    }
+  }, [open, initialData]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     onSubmit(form);
-    setForm({ title: '', description: '', category: '', tags: [], durationHours: 1 });
+    setForm({ title: '', description: '', category: '', tags: [], durationHours: 1, priority: 'none' });
   };
 
   const handleTagDelete = (tagToDelete) => {
@@ -110,6 +143,19 @@ export default function TaskForm({ open, onClose, onSubmit, initialData = null }
               inputProps={{ min: 0, step: 0.25 }}
               fullWidth
             />
+
+            <TextField
+              select
+              label="Priority"
+              value={form.priority}
+              onChange={e => setForm({ ...form, priority: e.target.value })}
+              fullWidth
+            >
+              <MenuItem value="none">None</MenuItem>
+              <MenuItem value="low">Low</MenuItem>
+              <MenuItem value="medium">Medium</MenuItem>
+              <MenuItem value="high">High</MenuItem>
+            </TextField>
           </Box>
         </DialogContent>
         <DialogActions>
