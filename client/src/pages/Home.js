@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useTasks } from '../hooks/useTasks';
+import { usePomodoro } from '../context/PomodoroContext';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
@@ -29,15 +30,29 @@ const priorityOrder = { high: 3, medium: 2, low: 1, none: 0 };
 
 export default function Home() {
   const { tasks, loading, error, fetchTasks, createTask, deleteTask, updateTask } = useTasks();
+  const { activeTask, clearPomodoro } = usePomodoro();
+  
   // Handlers for task actions
   const handleDelete = async (taskId) => {
     if (!window.confirm('Are you sure you want to delete this task?')) return;
+    
+    // Clear pomodoro if deleting active task
+    if (activeTask && activeTask._id === taskId) {
+      clearPomodoro();
+    }
+    
     await deleteTask(taskId);
   };
 
   const handleComplete = async (taskId) => {
     const taskToUpdate = tasks.find(t => t._id === taskId);
     const wasCompleted = taskToUpdate.completed;
+    
+    // Clear pomodoro if completing active task
+    if (!wasCompleted && activeTask && activeTask._id === taskId) {
+      clearPomodoro();
+    }
+    
     await updateTask(taskId, {
       ...taskToUpdate,
       completed: !wasCompleted,

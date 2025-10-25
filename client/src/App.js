@@ -3,12 +3,14 @@ import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AppProvider } from './context/AppContext';
 import { ThemeModeProvider } from './context/ThemeContext';
+import { PomodoroProvider } from './context/PomodoroContext';
 import NavBar from './components/NavBar';
 import PageLayout from './components/PageLayout';
 import Home from './pages/Home';
 import Analytics from './pages/Analytics';
 import Rewards from './pages/Rewards';
 import Settings from './pages/Settings';
+import CurrentTask from './pages/CurrentTask';
 import './App.css';
 
 const pageTransition = {
@@ -54,6 +56,14 @@ function AnimatedRoutes() {
             </motion.div>
           } 
         />
+        <Route 
+          path="/current-task" 
+          element={
+            <motion.div {...pageTransition} transition={{ duration: 0.3 }}>
+              <CurrentTask />
+            </motion.div>
+          } 
+        />
       </Routes>
     </AnimatePresence>
   );
@@ -63,12 +73,14 @@ function App() {
   return (
     <ThemeModeProvider>
       <AppProvider>
-        <BrowserRouter>
-          <NavBar />
-          <PageLayout>
-            <AnimatedRoutes />
-          </PageLayout>
-        </BrowserRouter>
+        <PomodoroProvider>
+          <BrowserRouter>
+            <NavBar />
+            <PageLayout>
+              <AnimatedRoutes />
+            </PageLayout>
+          </BrowserRouter>
+        </PomodoroProvider>
       </AppProvider>
     </ThemeModeProvider>
   );

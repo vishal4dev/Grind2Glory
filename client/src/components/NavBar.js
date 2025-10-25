@@ -22,6 +22,11 @@ import Tooltip from '@mui/material/Tooltip';
 import LightModeIcon from '@mui/icons-material/LightMode';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import { useThemeMode } from '../context/ThemeContext';
+import { usePomodoro } from '../context/PomodoroContext';
+import { formatTimerDisplay } from '../utils/pomodoroCalculator';
+import TimerIcon from '@mui/icons-material/Timer';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import QuickTimerDialog from './QuickTimerDialog';
 
 const navItems = [
   { text: 'Home', path: '/', icon: HomeIcon },
@@ -32,10 +37,12 @@ const navItems = [
 
 export default function NavBar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [quickTimerOpen, setQuickTimerOpen] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const location = useLocation();
   const { mode, toggleMode } = useThemeMode();
+  const { activeTask, secondsRemaining, isRunning } = usePomodoro();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -44,6 +51,32 @@ export default function NavBar() {
   const drawer = (
     <Box sx={{ width: 250 }} role="presentation" onClick={handleDrawerToggle}>
       <List>
+        {activeTask && (
+          <ListItem 
+            component={RouterLink} 
+            to="/current-task"
+            selected={location.pathname === '/current-task'}
+            sx={{
+              '&.Mui-selected': {
+                backgroundColor: 'rgba(124, 58, 237, 0.08)',
+                '&:hover': {
+                  backgroundColor: 'rgba(124, 58, 237, 0.12)'
+                }
+              }
+            }}
+          >
+            <ListItemIcon>
+              <TimerIcon color={location.pathname === '/current-task' ? 'secondary' : 'inherit'} />
+            </ListItemIcon>
+            <ListItemText 
+              primary="Current Task"
+              secondary={formatTimerDisplay(secondsRemaining)}
+              primaryTypographyProps={{
+                color: location.pathname === '/current-task' ? 'secondary' : 'inherit'
+              }}
+            />
+          </ListItem>
+        )}
         {navItems.map(({ text, path, icon: Icon }) => (
           <ListItem 
             key={text} 
@@ -113,10 +146,68 @@ export default function NavBar() {
               <EmojiEventsIcon color="secondary" />
               Grind2Glory
             </Typography>
+            
+            {/* Quick Timer Button - Always visible */}
+            <Tooltip title="Quick Focus Timer">
+              <IconButton
+                color="secondary"
+                onClick={() => setQuickTimerOpen(true)}
+                sx={{ ml: 2 }}
+                aria-label="quick timer"
+              >
+                <AccessTimeIcon />
+              </IconButton>
+            </Tooltip>
           </Box>
 
           {!isMobile && (
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              {activeTask && (
+                <Tooltip title="Current Focus Session">
+                  <Button
+                    component={RouterLink}
+                    to="/current-task"
+                    color={location.pathname === '/current-task' ? 'secondary' : 'inherit'}
+                    startIcon={<TimerIcon />}
+                    sx={{
+                      position: 'relative',
+                      bgcolor: theme => location.pathname === '/current-task' 
+                        ? 'transparent'
+                        : `rgba(124, 58, 237, 0.08)`,
+                      '&:hover': {
+                        bgcolor: 'rgba(124, 58, 237, 0.12)'
+                      },
+                      '&::after': location.pathname === '/current-task' ? {
+                        content: '""',
+                        position: 'absolute',
+                        bottom: 0,
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        width: '100%',
+                        height: 2,
+                        backgroundColor: 'secondary.main',
+                        borderRadius: 1
+                      } : undefined
+                    }}
+                  >
+                    <Box
+                      component="span"
+                      sx={{
+                        fontFamily: 'monospace',
+                        fontSize: '0.95rem',
+                        fontWeight: 600,
+                        animation: isRunning ? 'pulse 2s ease-in-out infinite' : 'none',
+                        '@keyframes pulse': {
+                          '0%, 100%': { opacity: 1 },
+                          '50%': { opacity: 0.7 }
+                        }
+                      }}
+                    >
+                      {formatTimerDisplay(secondsRemaining)}
+                    </Box>
+                  </Button>
+                </Tooltip>
+              )}
               {navItems.map(({ text, path }) => (
                 <Button
                   key={text}
@@ -173,6 +264,12 @@ export default function NavBar() {
       >
         {drawer}
       </Drawer>
+      
+      {/* Quick Timer Dialog */}
+      <QuickTimerDialog 
+        open={quickTimerOpen} 
+        onClose={() => setQuickTimerOpen(false)} 
+      />
     </>
   );
 }
