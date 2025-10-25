@@ -23,7 +23,7 @@ const priorityConfig = {
 };
 
 export default function TaskCard({ task, onEdit, onDelete, onComplete }) {
-  const { title, description, category, tags, durationHours, completed, _id } = task;
+  const { title, description, category, tags, durationHours, completed } = task;
   // Normalize priority value
   const priority = task.priority || 'none';
   const priorityStyle = priorityConfig[priority] || priorityConfig.none;

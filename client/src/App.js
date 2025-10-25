@@ -6,6 +6,7 @@ import { ThemeModeProvider } from './context/ThemeContext';
 import NavBar from './components/NavBar';
 import PageLayout from './components/PageLayout';
 import Home from './pages/Home';
+import Analytics from './pages/Analytics';
 import Rewards from './pages/Rewards';
 import Settings from './pages/Settings';
 import './App.css';
@@ -26,6 +27,14 @@ function AnimatedRoutes() {
           element={
             <motion.div {...pageTransition} transition={{ duration: 0.3 }}>
               <Home />
+            </motion.div>
+          } 
+        />
+        <Route 
+          path="/analytics" 
+          element={
+            <motion.div {...pageTransition} transition={{ duration: 0.3 }}>
+              <Analytics />
             </motion.div>
           } 
         />

@@ -12,6 +12,7 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import Box from '@mui/material/Box';
 import MenuIcon from '@mui/icons-material/Menu';
 import HomeIcon from '@mui/icons-material/Home';
+import BarChartIcon from '@mui/icons-material/BarChart';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
@@ -24,6 +25,7 @@ import { useThemeMode } from '../context/ThemeContext';
 
 const navItems = [
   { text: 'Home', path: '/', icon: HomeIcon },
+  { text: 'Analytics', path: '/analytics', icon: BarChartIcon },
   { text: 'Rewards', path: '/rewards', icon: EmojiEventsIcon },
   { text: 'Settings', path: '/settings', icon: SettingsIcon }
 ];
