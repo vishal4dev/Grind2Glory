@@ -118,7 +118,7 @@ export default function CompletionProgress() {
             key={cp.key}
             sx={{
               position: 'absolute',
-              left: `calc(${cp.pct}% - 20px)`,
+              left: `${cp.pct}%`,
               top: 24,
               zIndex: 2,
               display: 'flex',
@@ -126,9 +126,10 @@ export default function CompletionProgress() {
               alignItems: 'center',
               cursor: 'pointer',
               minWidth: 40,
+              transform: cp.key === 'monthly' ? 'translateX(-60%)' : 'translateX(-50%)',
               transition: 'transform 0.2s ease',
               '&:hover': {
-                transform: 'translateY(-2px)'
+                transform: cp.key === 'monthly' ? 'translate(calc(-60%), -2px)' : 'translate(-50%, -2px)'
               }
             }}
             onMouseEnter={() => setHovered(cp.key)}
