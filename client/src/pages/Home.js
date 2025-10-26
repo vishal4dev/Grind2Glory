@@ -156,10 +156,10 @@ export default function Home() {
             label="High Priority"
             onClick={() => setPriorityFilter('high')}
             sx={{
-              bgcolor: priorityFilter === 'high' ? '#ef4444' : 'transparent',
-              color: priorityFilter === 'high' ? 'white' : '#ef4444',
-              borderColor: '#ef4444',
-              '&:hover': { bgcolor: priorityFilter === 'high' ? '#dc2626' : 'rgba(239, 68, 68, 0.08)' }
+              bgcolor: priorityFilter === 'high' ? '#9c27b0' : 'transparent',
+              color: priorityFilter === 'high' ? 'white' : '#9c27b0',
+              borderColor: '#9c27b0',
+              '&:hover': { bgcolor: priorityFilter === 'high' ? '#7b1fa2' : 'rgba(156, 39, 176, 0.08)' }
             }}
             variant="outlined"
           />
@@ -167,10 +167,10 @@ export default function Home() {
             label="Medium Priority"
             onClick={() => setPriorityFilter('medium')}
             sx={{
-              bgcolor: priorityFilter === 'medium' ? '#f97316' : 'transparent',
-              color: priorityFilter === 'medium' ? 'white' : '#f97316',
-              borderColor: '#f97316',
-              '&:hover': { bgcolor: priorityFilter === 'medium' ? '#ea580c' : 'rgba(249, 115, 22, 0.08)' }
+              bgcolor: priorityFilter === 'medium' ? '#9c27b0' : 'transparent',
+              color: priorityFilter === 'medium' ? 'white' : '#9c27b0',
+              borderColor: '#9c27b0',
+              '&:hover': { bgcolor: priorityFilter === 'medium' ? '#7b1fa2' : 'rgba(156, 39, 176, 0.08)' }
             }}
             variant="outlined"
           />
@@ -178,10 +178,10 @@ export default function Home() {
             label="Low Priority"
             onClick={() => setPriorityFilter('low')}
             sx={{
-              bgcolor: priorityFilter === 'low' ? '#22c55e' : 'transparent',
-              color: priorityFilter === 'low' ? 'white' : '#22c55e',
-              borderColor: '#22c55e',
-              '&:hover': { bgcolor: priorityFilter === 'low' ? '#16a34a' : 'rgba(34, 197, 94, 0.08)' }
+              bgcolor: priorityFilter === 'low' ? '#9c27b0' : 'transparent',
+              color: priorityFilter === 'low' ? 'white' : '#9c27b0',
+              borderColor: '#9c27b0',
+              '&:hover': { bgcolor: priorityFilter === 'low' ? '#7b1fa2' : 'rgba(156, 39, 176, 0.08)' }
             }}
             variant="outlined"
           />
