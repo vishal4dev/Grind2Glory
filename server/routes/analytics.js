@@ -361,6 +361,22 @@ router.get('/completion', async (req, res) => {
   }
 });
 
+// GET /api/analytics/insights - Get all tasks for insights calculation
+router.get('/insights', async (req, res) => {
+  try {
+    // Fetch all completed tasks for insights analysis
+    const tasks = await Task.find({ completed: true })
+      .select('title category durationHours completedAt createdAt')
+      .sort({ completedAt: -1, createdAt: -1 })
+      .limit(500); // Limit to last 500 completed tasks for performance
+
+    res.json({ tasks });
+  } catch (err) {
+    console.error('Analytics insights error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // GET /api/analytics/streak - Streak analysis
 router.get('/streak', async (req, res) => {
   try {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -22,6 +22,8 @@ import TimeDistribution from '../components/analytics/TimeDistribution';
 import WeeklyHeatmap from '../components/analytics/WeeklyHeatmap';
 import CompletionRate from '../components/analytics/CompletionRate';
 import StreakAnalysis from '../components/analytics/StreakAnalysis';
+import PersonalizedInsights from '../components/analytics/PersonalizedInsights';
+import { fetchInsightsData } from '../services/api';
 
 const chartOptions = [
   {
@@ -79,6 +81,26 @@ export default function Analytics() {
   const [selectedChart, setSelectedChart] = useState(chartOptions[0]);
   const [dateRange, setDateRange] = useState(30);
   const [anchorEl, setAnchorEl] = useState(null);
+  const [tasks, setTasks] = useState([]);
+  const [loadingTasks, setLoadingTasks] = useState(true);
+
+  // Fetch tasks for insights
+  useEffect(() => {
+    const loadTasks = async () => {
+      try {
+        setLoadingTasks(true);
+        const { data } = await fetchInsightsData();
+        setTasks(data.tasks || []);
+      } catch (error) {
+        console.error('Error loading tasks for insights:', error);
+        setTasks([]);
+      } finally {
+        setLoadingTasks(false);
+      }
+    };
+    
+    loadTasks();
+  }, []);
 
   const handleChartMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -109,6 +131,9 @@ export default function Analytics() {
           {dateRange === 0 ? 'All Time' : `Last ${dateRange} Days`}
         </Typography>
       </Box>
+
+      {/* Personalized Insights Section */}
+      {!loadingTasks && <PersonalizedInsights tasks={tasks} />}
 
       {/* Control Bar */}
       <Paper 

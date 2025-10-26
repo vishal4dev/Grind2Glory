@@ -6,6 +6,7 @@ import { ThemeModeProvider } from './context/ThemeContext';
 import { PomodoroProvider } from './context/PomodoroContext';
 import NavBar from './components/NavBar';
 import PageLayout from './components/PageLayout';
+import InstantInsightButton from './components/InstantInsightButton';
 import Home from './pages/Home';
 import Analytics from './pages/Analytics';
 import Rewards from './pages/Rewards';
@@ -79,6 +80,7 @@ function App() {
             <PageLayout>
               <AnimatedRoutes />
             </PageLayout>
+            <InstantInsightButton />
           </BrowserRouter>
         </PomodoroProvider>
       </AppProvider>

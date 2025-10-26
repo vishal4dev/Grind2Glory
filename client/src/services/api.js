@@ -19,5 +19,6 @@ export const fetchTimeDistributionData = (range) => api.get(`/analytics/time-dis
 export const fetchHeatmapData = (range) => api.get(`/analytics/heatmap?range=${range}`);
 export const fetchCompletionData = (range) => api.get(`/analytics/completion?range=${range}`);
 export const fetchStreakData = () => api.get('/analytics/streak');
+export const fetchInsightsData = () => api.get('/analytics/insights');
 
 export default api;
