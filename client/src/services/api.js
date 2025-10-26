@@ -1,7 +1,11 @@
 import axios from 'axios';
 
+// In production, API is served from same origin (no need for separate URL)
+// In development, use localhost:5000
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api'
+  baseURL: process.env.NODE_ENV === 'production' 
+    ? '/api'  // Same domain in production
+    : (process.env.REACT_APP_API_URL || 'http://localhost:5000/api')
 });
 
 export const fetchTasks = () => api.get('/tasks');
