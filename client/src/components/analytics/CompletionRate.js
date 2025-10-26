@@ -1,71 +1,47 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import CircularProgress from '@mui/material/CircularProgress';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import { fetchCompletionData } from '../../services/api';
 
-export default function CompletionRate({ tasks }) {
-  const stats = useMemo(() => {
-    if (!tasks || tasks.length === 0) {
-      return {
-        percentage: 0,
-        completed: 0,
-        total: 0,
-        thisWeek: 0,
-        lastWeek: 0,
-        trend: 0,
-        sparklineData: []
-      };
-    }
+export default function CompletionRate({ dateRange }) {
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    percentage: 0,
+    completed: 0,
+    total: 0,
+    thisWeek: 0,
+    lastWeek: 0,
+    trend: 0,
+    sparklineData: []
+  });
 
-    const completed = tasks.filter(t => t.completed).length;
-    const total = tasks.length;
-    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-    // Calculate weekly stats
-    const now = new Date();
-    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-
-    const thisWeek = tasks.filter(t => 
-      t.completed && new Date(t.completedAt) >= oneWeekAgo
-    ).length;
-
-    const lastWeek = tasks.filter(t => 
-      t.completed && 
-      new Date(t.completedAt) >= twoWeeksAgo && 
-      new Date(t.completedAt) < oneWeekAgo
-    ).length;
-
-    const trend = lastWeek > 0 ? ((thisWeek - lastWeek) / lastWeek) * 100 : 0;
-
-    // Generate sparkline data (last 7 days)
-    const sparklineData = [];
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-      const dayStart = new Date(date.setHours(0, 0, 0, 0));
-      const dayEnd = new Date(date.setHours(23, 59, 59, 999));
-      
-      const dayCompleted = tasks.filter(t => 
-        t.completed && 
-        new Date(t.completedAt) >= dayStart && 
-        new Date(t.completedAt) <= dayEnd
-      ).length;
-
-      sparklineData.push({ value: dayCompleted });
-    }
-
-    return {
-      percentage,
-      completed,
-      total,
-      thisWeek,
-      lastWeek,
-      trend,
-      sparklineData
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const { data } = await fetchCompletionData(dateRange);
+        setStats(data);
+      } catch (error) {
+        console.error('Error loading completion data:', error);
+      } finally {
+        setLoading(false);
+      }
     };
-  }, [tasks]);
+
+    loadData();
+  }, [dateRange]);
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   if (stats.total === 0) {
     return (
@@ -119,7 +95,7 @@ export default function CompletionRate({ tasks }) {
               fill="none"
               stroke="url(#progressGradient)"
               strokeWidth="20"
-              strokeDasharray={`${(stats.percentage / 100) * 817} 817`}
+              strokeDasharray={`${((stats.percentage || 0) / 100) * 817} 817`}
               strokeLinecap="round"
               transform="rotate(-90 150 150)"
               style={{ 
@@ -138,13 +114,13 @@ export default function CompletionRate({ tasks }) {
           {/* Center Text */}
           <Box sx={{ textAlign: 'center', zIndex: 1 }}>
             <Typography variant="h1" fontWeight={700} sx={{ fontSize: 60, lineHeight: 1 }}>
-              {stats.percentage}%
+              {stats.percentage || 0}%
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
               Completed
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {stats.completed} of {stats.total} tasks
+              {stats.completed || 0} of {stats.total || 0} tasks
             </Typography>
           </Box>
         </Box>
@@ -199,9 +175,9 @@ export default function CompletionRate({ tasks }) {
             <Typography 
               variant="h4" 
               fontWeight={600}
-              color={stats.trend >= 0 ? 'success.main' : 'error.main'}
+              color={(stats.trend || 0) >= 0 ? 'success.main' : 'error.main'}
             >
-              {stats.trend >= 0 ? '+' : ''}{stats.trend.toFixed(0)}%
+              {(stats.trend || 0) >= 0 ? '+' : ''}{(stats.trend || 0).toFixed(0)}%
             </Typography>
             {stats.trend >= 0 ? (
               <TrendingUpIcon color="success" />

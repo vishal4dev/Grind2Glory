@@ -51,7 +51,7 @@ export function PomodoroProvider({ children }) {
         clearInterval(timerRef.current);
       }
     };
-  }, [state.isRunning, state.secondsRemaining]);
+  }, [state.isRunning]);
 
   // Handle session/break transitions
   useEffect(() => {

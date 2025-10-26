@@ -1,12 +1,15 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Switch from '@mui/material/Switch';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
+import TextField from '@mui/material/TextField';
 import Paper from '@mui/material/Paper';
+import CircularProgress from '@mui/material/CircularProgress';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { format, subDays, eachDayOfInterval } from 'date-fns';
+import { format } from 'date-fns';
+import { fetchProductivityData } from '../../services/api';
 
 // Count-up animation hook
 function useCountUp(end, duration = 1000) {
@@ -34,60 +37,51 @@ function useCountUp(end, duration = 1000) {
   return count;
 }
 
-export default function ProductivityTrend({ tasks, dateRange }) {
+export default function ProductivityTrend({ dateRange }) {
   const [smoothLine, setSmoothLine] = useState(true);
   const [showGoalLine, setShowGoalLine] = useState(false);
   const [goalHours, setGoalHours] = useState(6);
-  const chartData = useMemo(() => {
-    if (!tasks || tasks.length === 0) return [];
+  const [loading, setLoading] = useState(true);
+  const [chartData, setChartData] = useState([]);
+  const [stats, setStats] = useState({ total: 0, average: 0, highest: 'N/A' });
 
-    const days = dateRange === 0 ? 30 : dateRange;
-    const endDate = new Date();
-    const startDate = subDays(endDate, days - 1);
-
-    // Create array of all dates in range
-    const dateArray = eachDayOfInterval({ start: startDate, end: endDate });
-
-    // Group completed tasks by date
-    const tasksByDate = {};
-    tasks.forEach(task => {
-      if (task.completed && task.completedAt) {
-        const date = format(new Date(task.completedAt), 'yyyy-MM-dd');
-        if (!tasksByDate[date]) {
-          tasksByDate[date] = 0;
-        }
-        tasksByDate[date] += task.durationHours || 0;
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const { data } = await fetchProductivityData(dateRange);
+        
+        // Format dates for display
+        const formattedData = data.chartData.map(item => ({
+          ...item,
+          date: format(new Date(item.date), 'MMM dd')
+        }));
+        
+        setChartData(formattedData);
+        setStats(data.stats);
+      } catch (error) {
+        console.error('Error loading productivity data:', error);
+      } finally {
+        setLoading(false);
       }
-    });
-
-    // Map to chart data
-    return dateArray.map(date => {
-      const dateStr = format(date, 'yyyy-MM-dd');
-      return {
-        date: format(date, 'MMM dd'),
-        fullDate: dateStr,
-        hours: tasksByDate[dateStr] || 0
-      };
-    });
-  }, [tasks, dateRange]);
-
-  const stats = useMemo(() => {
-    const totalHours = chartData.reduce((sum, day) => sum + day.hours, 0);
-    const avgDaily = chartData.length > 0 ? (totalHours / chartData.length) : 0;
-    const highestDay = chartData.reduce((max, day) => day.hours > max.hours ? day : max, { hours: 0, date: 'N/A' });
-
-    return {
-      total: totalHours,
-      average: avgDaily,
-      highest: highestDay.hours > 0 ? `${highestDay.date}: ${highestDay.hours.toFixed(1)}h` : 'N/A'
     };
-  }, [chartData]);
+
+    loadData();
+  }, [dateRange]);
   
   // Animated counts
   const animatedTotal = useCountUp(stats.total);
   const animatedAverage = useCountUp(stats.average);
 
-  if (chartData.length === 0 || stats.total === '0.0') {
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (chartData.length === 0) {
     return (
       <Box sx={{ textAlign: 'center', py: 8 }}>
         <Typography variant="h5" color="text.secondary" gutterBottom>
@@ -110,7 +104,7 @@ export default function ProductivityTrend({ tasks, dateRange }) {
           </Typography>
           
           {/* Chart-Specific Controls */}
-          <Paper elevation={0} sx={{ p: 1, bgcolor: 'background.default', display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Paper elevation={0} sx={{ p: 1, bgcolor: 'background.default', display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
             <FormControlLabel
               control={
                 <Switch 
@@ -129,8 +123,19 @@ export default function ProductivityTrend({ tasks, dateRange }) {
                   size="small"
                 />
               }
-              label={<Typography variant="caption">Show Goal ({goalHours}h)</Typography>}
+              label={<Typography variant="caption">Show Goal</Typography>}
             />
+            {showGoalLine && (
+              <TextField
+                type="number"
+                value={goalHours}
+                onChange={(e) => setGoalHours(Math.max(1, parseInt(e.target.value) || 1))}
+                size="small"
+                inputProps={{ min: 1, max: 24, step: 1 }}
+                sx={{ width: 70 }}
+                label="Hours"
+              />
+            )}
           </Paper>
         </Box>
         
@@ -189,7 +194,7 @@ export default function ProductivityTrend({ tasks, dateRange }) {
 
       {/* Area Chart with Animation */}
       <ResponsiveContainer width="100%" height={400}>
-        <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+        <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 5 }}>
           <defs>
             <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.3}/>

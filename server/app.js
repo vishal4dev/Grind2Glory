@@ -5,6 +5,7 @@ require('dotenv').config();
 
 const tasksRouter = require('./routes/tasks');
 const settingsRouter = require('./routes/settings');
+const analyticsRouter = require('./routes/analytics');
 
 const app = express();
 app.use(cors());
@@ -18,6 +19,7 @@ mongoose.connect(MONGODB_URL, {
 
 app.use('/api/tasks', tasksRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/analytics', analyticsRouter);
 
 app.get('/', (req, res) => res.json({ ok: true, msg: 'Grind2Glory API' }));
 

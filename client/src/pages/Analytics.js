@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -6,7 +6,6 @@ import ButtonGroup from '@mui/material/ButtonGroup';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
-import { useTasks } from '../hooks/useTasks';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import PieChartIcon from '@mui/icons-material/PieChart';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
@@ -77,7 +76,6 @@ const dateRanges = [
 ];
 
 export default function Analytics() {
-  const { tasks } = useTasks();
   const [selectedChart, setSelectedChart] = useState(chartOptions[0]);
   const [dateRange, setDateRange] = useState(30);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -94,16 +92,6 @@ export default function Analytics() {
     setSelectedChart(chart);
     handleChartMenuClose();
   };
-
-  // Filter tasks by date range
-  const filteredTasks = useMemo(() => {
-    if (dateRange === 0) return tasks;
-    
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - dateRange);
-    
-    return tasks.filter(task => new Date(task.createdAt) >= cutoffDate);
-  }, [tasks, dateRange]);
 
   const ChartComponent = selectedChart.component;
 
@@ -124,16 +112,19 @@ export default function Analytics() {
 
       {/* Control Bar */}
       <Paper 
-        elevation={0} 
+        elevation={1} 
         sx={{ 
-          p: 2, 
+          p: { xs: 2, sm: 2.5 }, 
           mb: 3, 
-          bgcolor: 'background.default',
+          bgcolor: 'background.paper',
+          borderRadius: 2,
           display: 'flex',
           flexDirection: { xs: 'column', sm: 'row' },
           gap: 2,
           justifyContent: 'space-between',
-          alignItems: { xs: 'stretch', sm: 'center' }
+          alignItems: { xs: 'stretch', sm: 'center' },
+          border: '1px solid',
+          borderColor: 'divider'
         }}
       >
         {/* Chart Selector Dropdown */}
@@ -231,12 +222,15 @@ export default function Analytics() {
       <Paper
         elevation={2}
         sx={{
-          p: { xs: 2, sm: 4 },
+          p: { xs: 2, sm: 3, md: 4 },
           borderRadius: 3,
-          minHeight: { xs: 300, sm: 400, md: 500 }
+          minHeight: 400,
+          bgcolor: 'background.paper',
+          border: '1px solid',
+          borderColor: 'divider'
         }}
       >
-        <ChartComponent tasks={filteredTasks} dateRange={dateRange} />
+        <ChartComponent dateRange={dateRange} />
       </Paper>
     </Box>
   );

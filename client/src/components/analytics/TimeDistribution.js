@@ -1,7 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import CircularProgress from '@mui/material/CircularProgress';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { fetchTimeDistributionData } from '../../services/api';
 
 const TIME_PERIODS = [
   { name: 'Morning', icon: '☀️', start: 6, end: 12, color: '#fbbf24' },
@@ -10,49 +12,52 @@ const TIME_PERIODS = [
   { name: 'Night', icon: '🌙', start: 22, end: 6, color: '#7c3aed' }
 ];
 
-export default function TimeDistribution({ tasks }) {
-  const chartData = useMemo(() => {
-    if (!tasks || tasks.length === 0) return [];
+export default function TimeDistribution({ dateRange }) {
+  const [loading, setLoading] = useState(true);
+  const [chartData, setChartData] = useState([]);
+  const [peakTime, setPeakTime] = useState(null);
 
-    const periodHours = {
-      'Morning': 0,
-      'Afternoon': 0,
-      'Evening': 0,
-      'Night': 0
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const { data } = await fetchTimeDistributionData(dateRange);
+        
+        // Merge with TIME_PERIODS to get icons and colors
+        const enrichedData = data.chartData.map(item => {
+          const period = TIME_PERIODS.find(p => p.name === item.name);
+          return {
+            ...item,
+            ...period
+          };
+        });
+        
+        setChartData(enrichedData);
+        
+        // Set peak time with icon and color
+        if (data.peakTime && data.peakTime.hours > 0) {
+          const period = TIME_PERIODS.find(p => p.name === data.peakTime.name);
+          setPeakTime({ ...data.peakTime, ...period });
+        }
+      } catch (error) {
+        console.error('Error loading time distribution data:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    tasks.forEach(task => {
-      if (task.completed && task.completedAt) {
-        const hour = new Date(task.completedAt).getHours();
-        const duration = task.durationHours || 0;
+    loadData();
+  }, [dateRange]);
 
-        if (hour >= 6 && hour < 12) {
-          periodHours['Morning'] += duration;
-        } else if (hour >= 12 && hour < 18) {
-          periodHours['Afternoon'] += duration;
-        } else if (hour >= 18 && hour < 22) {
-          periodHours['Evening'] += duration;
-        } else {
-          periodHours['Night'] += duration;
-        }
-      }
-    });
-
-    return TIME_PERIODS.map(period => ({
-      ...period,
-      hours: parseFloat(periodHours[period.name].toFixed(1))
-    }));
-  }, [tasks]);
-
-  const peakTime = useMemo(() => {
-    if (chartData.length === 0) return null;
-    return chartData.reduce((max, period) => 
-      period.hours > max.hours ? period : max, 
-      chartData[0]
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
+        <CircularProgress />
+      </Box>
     );
-  }, [chartData]);
+  }
 
-  if (chartData.every(period => period.hours === 0)) {
+  if (chartData.length === 0) {
     return (
       <Box sx={{ textAlign: 'center', py: 8 }}>
         <Typography variant="h5" color="text.secondary" gutterBottom>
@@ -82,11 +87,11 @@ export default function TimeDistribution({ tasks }) {
       </Box>
 
       {/* Horizontal Bar Chart */}
-      <ResponsiveContainer width="100%" height={400}>
+      <ResponsiveContainer width="100%" height={350}>
         <BarChart 
           data={chartData} 
           layout="vertical"
-          margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
+          margin={{ top: 20, right: 30, left: 120, bottom: 20 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis 

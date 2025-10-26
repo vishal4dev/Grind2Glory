@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Select from '@mui/material/Select';
@@ -6,7 +6,9 @@ import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Paper from '@mui/material/Paper';
+import CircularProgress from '@mui/material/CircularProgress';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { fetchCategoryData } from '../../services/api';
 
 // More vibrant color palette
 const COLORS = {
@@ -30,45 +32,52 @@ const getColorForCategory = (category) => {
   return colors[hash % colors.length];
 };
 
-export default function CategoryBreakdown({ tasks }) {
+export default function CategoryBreakdown({ dateRange }) {
   const [sortBy, setSortBy] = useState('hours'); // 'hours', 'alphabetical', 'custom'
-  const chartData = useMemo(() => {
-    if (!tasks || tasks.length === 0) return [];
+  const [loading, setLoading] = useState(true);
+  const [chartData, setChartData] = useState([]);
+  const [totalHours, setTotalHours] = useState(0);
 
-    const categoryHours = {};
-    tasks.forEach(task => {
-      if (task.completed) {
-        const category = task.category || 'General';
-        if (!categoryHours[category]) {
-          categoryHours[category] = 0;
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const { data } = await fetchCategoryData(dateRange);
+        
+        // Add colors to the data
+        let processedData = data.chartData.map(item => ({
+          ...item,
+          color: getColorForCategory(item.name)
+        }));
+        
+        // Apply sorting
+        if (sortBy === 'hours') {
+          processedData.sort((a, b) => b.value - a.value);
+        } else if (sortBy === 'alphabetical') {
+          processedData.sort((a, b) => a.name.localeCompare(b.name));
         }
-        categoryHours[category] += task.durationHours || 0;
+        
+        setChartData(processedData);
+        setTotalHours(parseFloat(data.totalHours) || 0);
+      } catch (error) {
+        console.error('Error loading category data:', error);
+      } finally {
+        setLoading(false);
       }
-    });
+    };
 
-    let data = Object.entries(categoryHours)
-      .map(([name, value]) => ({
-        name,
-        value: parseFloat(value.toFixed(1)),
-        color: getColorForCategory(name)
-      }));
-    
-    // Apply sorting
-    if (sortBy === 'hours') {
-      data.sort((a, b) => b.value - a.value);
-    } else if (sortBy === 'alphabetical') {
-      data.sort((a, b) => a.name.localeCompare(b.name));
-    }
-    // 'custom' keeps original order
-    
-    return data;
-  }, [tasks, sortBy]);
-
-  const totalHours = useMemo(() => {
-    return chartData.reduce((sum, item) => sum + item.value, 0).toFixed(1);
-  }, [chartData]);
+    loadData();
+  }, [dateRange, sortBy]);
 
   const topCategory = chartData.length > 0 ? chartData[0] : null;
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   if (chartData.length === 0) {
     return (
@@ -87,7 +96,7 @@ export default function CategoryBreakdown({ tasks }) {
     return (
       <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central">
         <tspan x={cx} dy="-0.5em" fontSize="32" fontWeight="700" fill="#374151">
-          {totalHours}h
+          {totalHours.toFixed(1)}h
         </tspan>
         <tspan x={cx} dy="1.5em" fontSize="14" fill="#6b7280">
           Total Hours
@@ -132,8 +141,9 @@ export default function CategoryBreakdown({ tasks }) {
       </Box>
 
       {/* Donut Chart */}
-      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: 'center', gap: 4 }}>
-        <ResponsiveContainer width="100%" height={400}>
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, alignItems: 'center', gap: 4, justifyContent: 'center' }}>
+        <Box sx={{ width: { xs: '100%', lg: '60%' }, minWidth: 300 }}>
+          <ResponsiveContainer width="100%" height={400}>
           <PieChart>
             <Pie
               data={chartData}
@@ -172,10 +182,11 @@ export default function CategoryBreakdown({ tasks }) {
               animationDuration={150}
             />
           </PieChart>
-        </ResponsiveContainer>
+          </ResponsiveContainer>
+        </Box>
 
         {/* Legend */}
-        <Box sx={{ minWidth: 200 }}>
+        <Box sx={{ minWidth: 200, maxWidth: 300, width: '100%' }}>
           {chartData.map((item, index) => (
             <Box 
               key={index} 

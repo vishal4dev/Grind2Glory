@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import { format, subDays, eachDayOfInterval, isSameDay } from 'date-fns';
+import CircularProgress from '@mui/material/CircularProgress';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import { keyframes } from '@mui/system';
+import { fetchStreakData } from '../../services/api';
 
 // Animations
 const flicker = keyframes`
@@ -28,111 +29,50 @@ const isMilestone = (streak) => {
   return milestones.includes(streak);
 };
 
-export default function StreakAnalysis({ tasks }) {
-  const streakData = useMemo(() => {
-    if (!tasks || tasks.length === 0) {
-      return {
-        currentStreak: 0,
-        longestStreak: 0,
-        totalActiveDays: 0,
-        consistencyRate: 0,
-        calendar: []
-      };
-    }
+export default function StreakAnalysis() {
+  const [loading, setLoading] = useState(true);
+  const [streakData, setStreakData] = useState({
+    currentStreak: 0,
+    longestStreak: 0,
+    totalDaysActive: 0,
+    calendar: []
+  });
 
-    // Get unique days with completed tasks
-    const completedDays = new Set();
-    tasks.forEach(task => {
-      if (task.completed && task.completedAt) {
-        const day = format(new Date(task.completedAt), 'yyyy-MM-dd');
-        completedDays.add(day);
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const { data } = await fetchStreakData();
+        setStreakData(data);
+      } catch (error) {
+        console.error('Error loading streak data:', error);
+      } finally {
+        setLoading(false);
       }
-    });
-
-    // Calculate current streak
-    let currentStreak = 0;
-    let checkDate = new Date();
-    while (true) {
-      const dateStr = format(checkDate, 'yyyy-MM-dd');
-      if (completedDays.has(dateStr)) {
-        currentStreak++;
-        checkDate = subDays(checkDate, 1);
-      } else if (isSameDay(checkDate, new Date())) {
-        // Today hasn't been counted yet, check yesterday
-        checkDate = subDays(checkDate, 1);
-      } else {
-        break;
-      }
-    }
-
-    // Calculate longest streak
-    const sortedDays = Array.from(completedDays).sort();
-    let longestStreak = 0;
-    let tempStreak = 0;
-    let prevDate = null;
-
-    sortedDays.forEach(dayStr => {
-      const currentDate = new Date(dayStr);
-      if (prevDate) {
-        const diffDays = Math.round((currentDate - prevDate) / (1000 * 60 * 60 * 24));
-        if (diffDays === 1) {
-          tempStreak++;
-        } else {
-          longestStreak = Math.max(longestStreak, tempStreak);
-          tempStreak = 1;
-        }
-      } else {
-        tempStreak = 1;
-      }
-      prevDate = currentDate;
-    });
-    longestStreak = Math.max(longestStreak, tempStreak);
-
-    // Generate calendar for last 30 days
-    const endDate = new Date();
-    const startDate = subDays(endDate, 29);
-    const dateArray = eachDayOfInterval({ start: startDate, end: endDate });
-
-    const calendar = dateArray.map(date => {
-      const dateStr = format(date, 'yyyy-MM-dd');
-      return {
-        date: dateStr,
-        displayDate: format(date, 'd'),
-        hasTask: completedDays.has(dateStr),
-        isToday: isSameDay(date, new Date())
-      };
-    });
-
-    // Calculate consistency rate
-    const totalActiveDays = completedDays.size;
-    const consistencyRate = Math.round((totalActiveDays / 30) * 100);
-
-    return {
-      currentStreak,
-      longestStreak,
-      totalActiveDays,
-      consistencyRate,
-      calendar
     };
-  }, [tasks]);
 
-  if (streakData.totalActiveDays === 0) {
+    loadData();
+  }, []);
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (streakData.currentStreak === 0 && streakData.longestStreak === 0) {
     return (
       <Box sx={{ textAlign: 'center', py: 8 }}>
         <Typography variant="h5" color="text.secondary" gutterBottom>
           🔥 No streak yet
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          Start your streak by completing a task today!
+          Complete tasks daily to build your streak!
         </Typography>
       </Box>
     );
-  }
-
-  // Group calendar into weeks
-  const weeks = [];
-  for (let i = 0; i < streakData.calendar.length; i += 7) {
-    weeks.push(streakData.calendar.slice(i, i + 7));
   }
 
   return (
@@ -236,88 +176,90 @@ export default function StreakAnalysis({ tasks }) {
         )}
       </Box>
 
-      {/* Mini Calendar */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="subtitle1" fontWeight={600} gutterBottom sx={{ mb: 2 }}>
-          Last 30 Days
-        </Typography>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-          {weeks.map((week, weekIdx) => (
-            <Box key={weekIdx} sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-              {week.map((day, dayIdx) => (
-                <Box
-                  key={dayIdx}
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    bgcolor: day.hasTask ? 'success.main' : '#e5e7eb',
-                    color: day.hasTask ? 'white' : 'text.secondary',
-                    fontWeight: day.isToday ? 700 : 400,
-                    border: day.isToday ? '3px solid' : 'none',
-                    borderColor: day.isToday ? 'primary.main' : 'transparent',
-                    position: 'relative',
-                    transition: 'all 0.2s',
-                    cursor: 'pointer',
-                    boxShadow: day.hasTask ? '0 0 10px rgba(16, 185, 129, 0.3)' : 'none',
-                    '&:hover': {
-                      transform: 'scale(1.1)',
-                      boxShadow: day.hasTask ? '0 4px 12px rgba(16, 185, 129, 0.5)' : 2
-                    }
-                  }}
-                >
-                  <Typography variant="caption" fontWeight="inherit">
-                    {day.displayDate}
-                  </Typography>
-                  {day.hasTask && (
-                    <Box
-                      sx={{
-                        position: 'absolute',
-                        top: 2,
-                        right: 2,
-                        width: 6,
-                        height: 6,
-                        borderRadius: '50%',
-                        bgcolor: '#10b981'
-                      }}
-                    />
-                  )}
-                </Box>
-              ))}
+      {/* 30-Day Calendar */}
+      {streakData.calendar && streakData.calendar.length > 0 && (
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="subtitle1" fontWeight={600} gutterBottom sx={{ mb: 2 }}>
+            Last 30 Days Activity
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+            {Array.from({ length: Math.ceil(streakData.calendar.length / 7) }, (_, weekIdx) => (
+              <Box key={weekIdx} sx={{ display: 'flex', gap: 0.75, justifyContent: 'center' }}>
+                {streakData.calendar.slice(weekIdx * 7, (weekIdx + 1) * 7).map((day, dayIdx) => (
+                  <Box
+                    key={dayIdx}
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      bgcolor: day.hasTask ? 'success.main' : '#e5e7eb',
+                      color: day.hasTask ? 'white' : 'text.secondary',
+                      fontWeight: day.isToday ? 700 : 400,
+                      border: day.isToday ? '3px solid' : 'none',
+                      borderColor: day.isToday ? 'primary.main' : 'transparent',
+                      position: 'relative',
+                      transition: 'all 0.2s',
+                      cursor: 'pointer',
+                      boxShadow: day.hasTask ? '0 0 10px rgba(16, 185, 129, 0.3)' : 'none',
+                      '&:hover': {
+                        transform: 'scale(1.1)',
+                        boxShadow: day.hasTask ? '0 4px 12px rgba(16, 185, 129, 0.5)' : 2
+                      }
+                    }}
+                  >
+                    <Typography variant="caption" fontWeight="inherit">
+                      {day.displayDate}
+                    </Typography>
+                    {day.hasTask && (
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: 2,
+                          right: 2,
+                          width: 6,
+                          height: 6,
+                          borderRadius: '50%',
+                          bgcolor: '#10b981'
+                        }}
+                      />
+                    )}
+                  </Box>
+                ))}
+              </Box>
+            ))}
+          </Box>
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mt: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Box sx={{ width: 12, height: 12, borderRadius: 1, bgcolor: 'success.main' }} />
+              <Typography variant="caption" color="text.secondary">
+                Completed
+              </Typography>
             </Box>
-          ))}
-        </Box>
-        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mt: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Box sx={{ width: 12, height: 12, borderRadius: 1, bgcolor: 'success.main' }} />
-            <Typography variant="caption" color="text.secondary">
-              Completed
-            </Typography>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Box sx={{ width: 12, height: 12, borderRadius: 1, bgcolor: '#e5e7eb' }} />
-            <Typography variant="caption" color="text.secondary">
-              Missed
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Box sx={{ width: 12, height: 12, borderRadius: 1, bgcolor: '#e5e7eb' }} />
+              <Typography variant="caption" color="text.secondary">
+                Missed
+              </Typography>
+            </Box>
           </Box>
         </Box>
-      </Box>
+      )}
 
       {/* Stats Grid */}
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(4, 1fr)' },
-          gap: 2
+          gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
+          gap: 3
         }}
       >
         <Box 
           sx={{ 
             textAlign: 'center', 
-            p: 2, 
+            p: 3, 
             bgcolor: 'background.default', 
             borderRadius: 2,
             transition: 'all 0.2s',
@@ -327,10 +269,10 @@ export default function StreakAnalysis({ tasks }) {
             }
           }}
         >
-          <Typography variant="h4" fontWeight={600} color="primary.main">
+          <Typography variant="h3" fontWeight={600} color="primary.main">
             {streakData.currentStreak}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
             Current Streak
           </Typography>
         </Box>
@@ -338,7 +280,7 @@ export default function StreakAnalysis({ tasks }) {
         <Box 
           sx={{ 
             textAlign: 'center', 
-            p: 2, 
+            p: 3, 
             bgcolor: 'background.default', 
             borderRadius: 2,
             transition: 'all 0.2s',
@@ -348,10 +290,10 @@ export default function StreakAnalysis({ tasks }) {
             }
           }}
         >
-          <Typography variant="h4" fontWeight={600} color="warning.main">
+          <Typography variant="h3" fontWeight={600} color="warning.main">
             {streakData.longestStreak}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
             Longest Streak
           </Typography>
         </Box>
@@ -359,7 +301,7 @@ export default function StreakAnalysis({ tasks }) {
         <Box 
           sx={{ 
             textAlign: 'center', 
-            p: 2, 
+            p: 3, 
             bgcolor: 'background.default', 
             borderRadius: 2,
             transition: 'all 0.2s',
@@ -369,32 +311,11 @@ export default function StreakAnalysis({ tasks }) {
             }
           }}
         >
-          <Typography variant="h4" fontWeight={600}>
-            {streakData.totalActiveDays}
+          <Typography variant="h3" fontWeight={600}>
+            {streakData.totalDaysActive}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
             Active Days
-          </Typography>
-        </Box>
-
-        <Box 
-          sx={{ 
-            textAlign: 'center', 
-            p: 2, 
-            bgcolor: 'background.default', 
-            borderRadius: 2,
-            transition: 'all 0.2s',
-            '&:hover': {
-              transform: 'scale(1.02)',
-              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.15)'
-            }
-          }}
-        >
-          <Typography variant="h4" fontWeight={600} color="success.main">
-            {streakData.consistencyRate}%
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Consistency
           </Typography>
         </Box>
       </Box>
