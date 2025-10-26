@@ -16,6 +16,7 @@ import { LoadingSpinner, ErrorMessage, EmptyState } from '../components/shared';
 import TaskCard from '../components/TaskCard';
 import TaskForm from '../components/TaskForm';
 import CompletionProgress from '../components/CompletionProgress';
+import MotivationalQuote from '../components/MotivationalQuote';
 
 const sortOptions = [
   { value: 'newest', label: 'Newest First' },
@@ -134,8 +135,13 @@ export default function Home() {
           Add Task
         </Button>
       </Box>
+      
       {/* Completion Progress Bar */}
       <CompletionProgress />
+      
+      {/* Motivational Quote Widget */}
+      <MotivationalQuote />
+      
       {/* Tasks Block */}
       <Box sx={{ mt: 4, p: 3, bgcolor: 'background.paper', borderRadius: 3, boxShadow: 1 }}>
         {/* Priority Filter Chips */}
@@ -180,6 +186,7 @@ export default function Home() {
             variant="outlined"
           />
         </Box>
+        
         {/* Search and Sort */}
         <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
           <TextField
@@ -214,6 +221,7 @@ export default function Home() {
             ))}
           </TextField>
         </Box>
+        
         {/* Task List */}
         {loading ? (
           <LoadingSpinner />
@@ -236,6 +244,7 @@ export default function Home() {
           </Grid>
         )}
       </Box>
+      
       {/* Task Form Dialog */}
       <TaskForm
         open={formOpen || !!editTask}
