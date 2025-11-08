@@ -71,26 +71,30 @@ export default function WeeklyHeatmap({ dateRange }) {
   }
 
   // Organize data by day of week for proper calendar grid
-  const weeks = [];
-  let currentWeek = [];
+const weeks = [];
+let currentWeek = Array(7).fill(null);
+
+// Get the day of week for the first date (0 = Sunday, 6 = Saturday)
+const firstDayOfWeek = heatmapData[0]?.day || 0;
+
+// Fill first week starting from the correct day
+let weekIndex = firstDayOfWeek;
+heatmapData.forEach((dayData) => {
+  currentWeek[weekIndex] = dayData;
+  weekIndex++;
   
-  heatmapData.forEach((dayData, index) => {
-    currentWeek.push(dayData);
-    // Start a new week after 7 days
-    if (currentWeek.length === 7) {
-      weeks.push([...currentWeek]);
-      currentWeek = [];
-    }
-  });
-  
-  // Add remaining days if any
-  if (currentWeek.length > 0) {
-    // Pad with null values to complete the week
-    while (currentWeek.length < 7) {
-      currentWeek.push(null);
-    }
-    weeks.push(currentWeek);
+  // Start new week when we reach 7 days
+  if (weekIndex === 7) {
+    weeks.push([...currentWeek]);
+    currentWeek = Array(7).fill(null);
+    weekIndex = 0;
   }
+});
+
+// Add the last incomplete week if it has any data
+if (weekIndex > 0) {
+  weeks.push(currentWeek);
+}
 
   return (
     <Box>

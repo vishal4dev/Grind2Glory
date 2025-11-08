@@ -6,7 +6,6 @@ const Task = require('../models/Task');
 function getDateRange(range) {
   const endDate = new Date();
   if (range === 0 || range === '0') {
-    // All time - return null to skip date filtering
     return null;
   }
   const days = parseInt(range) || 30;
@@ -15,64 +14,55 @@ function getDateRange(range) {
   return { startDate, endDate };
 }
 
+// Helper function to format date in local timezone (client-side format)
+function getLocalDateString(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // GET /api/analytics/productivity - Productivity trend data
 router.get('/productivity', async (req, res) => {
   try {
     const { range = 30 } = req.query;
-    const dateRange = getDateRange(range);
-    
     const days = range === 0 || range === '0' ? 30 : parseInt(range);
-    const endDate = new Date();
-    endDate.setHours(23, 59, 59, 999); // End of today
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - (days - 1)); // Include today in the count
-    startDate.setHours(0, 0, 0, 0); // Start of day
-
-    // Aggregate tasks by completion date (use createdAt as fallback)
-    const pipeline = [
-      {
-        $match: {
-          completed: true
-        }
-      },
-      {
-        $addFields: {
-          dateToUse: {
-            $ifNull: ['$completedAt', '$createdAt']
-          }
-        }
-      },
-      {
-        $match: {
-          dateToUse: { $gte: startDate, $lte: endDate }
-        }
-      },
-      {
-        $group: {
-          _id: {
-            $dateToString: { format: '%Y-%m-%d', date: '$dateToUse' }
-          },
-          hours: { $sum: '$durationHours' }
-        }
-      },
-      {
-        $sort: { _id: 1 }
-      }
-    ];
-
-    const results = await Task.aggregate(pipeline);
     
-    // Fill in missing dates with 0 hours
+    const endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - (days - 1));
+    startDate.setHours(0, 0, 0, 0);
+
+    // Fetch all completed tasks in the date range
+    const tasks = await Task.find({
+      completed: true,
+      $or: [
+        { completedAt: { $gte: startDate, $lte: endDate } },
+        { completedAt: null, createdAt: { $gte: startDate, $lte: endDate } }
+      ]
+    }).select('completedAt createdAt durationHours');
+
+    // Group by local date on the server
     const dataMap = {};
-    results.forEach(item => {
-      dataMap[item._id] = item.hours;
+    tasks.forEach(task => {
+      const dateToUse = task.completedAt || task.createdAt;
+      const localDate = new Date(dateToUse);
+      const dateStr = getLocalDateString(localDate);
+      
+      if (!dataMap[dateStr]) {
+        dataMap[dateStr] = 0;
+      }
+      dataMap[dateStr] += task.durationHours || 0;
     });
 
+    // Fill in missing dates with 0 hours
     const chartData = [];
-    const startTime = startDate.getTime();
     for (let i = 0; i < days; i++) {
-      const date = new Date(startTime + i * 24 * 60 * 60 * 1000);
-      const dateStr = date.toISOString().split('T')[0];
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      const dateStr = getLocalDateString(date);
+      
       chartData.push({
         date: dateStr,
         hours: dataMap[dateStr] || 0
@@ -109,7 +99,10 @@ router.get('/category', async (req, res) => {
     
     const matchStage = { completed: true };
     if (dateRange) {
-      matchStage.createdAt = { $gte: dateRange.startDate, $lte: dateRange.endDate };
+      matchStage.$or = [
+        { completedAt: { $gte: dateRange.startDate, $lte: dateRange.endDate } },
+        { completedAt: null, createdAt: { $gte: dateRange.startDate, $lte: dateRange.endDate } }
+      ];
     }
 
     const pipeline = [
@@ -151,7 +144,6 @@ router.get('/time-distribution', async (req, res) => {
     
     const matchStage = { completed: true };
     if (dateRange) {
-      // Use $or to check both completedAt and createdAt
       matchStage.$or = [
         { completedAt: { $gte: dateRange.startDate, $lte: dateRange.endDate } },
         { completedAt: null, createdAt: { $gte: dateRange.startDate, $lte: dateRange.endDate } }
@@ -169,7 +161,8 @@ router.get('/time-distribution', async (req, res) => {
 
     tasks.forEach(task => {
       const dateToUse = task.completedAt || task.createdAt;
-      const hour = new Date(dateToUse).getHours();
+      const localDate = new Date(dateToUse);
+      const hour = localDate.getHours();
       const duration = task.durationHours || 0;
 
       if (hour >= 6 && hour < 12) {
@@ -212,48 +205,33 @@ router.get('/heatmap', async (req, res) => {
     startDate.setDate(startDate.getDate() - (days - 1));
     startDate.setHours(0, 0, 0, 0);
 
-    const pipeline = [
-      {
-        $match: {
-          completed: true
-        }
-      },
-      {
-        $addFields: {
-          dateToUse: {
-            $ifNull: ['$completedAt', '$createdAt']
-          }
-        }
-      },
-      {
-        $match: {
-          dateToUse: { $gte: startDate, $lte: endDate }
-        }
-      },
-      {
-        $group: {
-          _id: {
-            $dateToString: { format: '%Y-%m-%d', date: '$dateToUse' }
-          },
-          hours: { $sum: '$durationHours' }
-        }
-      }
-    ];
+    const tasks = await Task.find({
+      completed: true,
+      $or: [
+        { completedAt: { $gte: startDate, $lte: endDate } },
+        { completedAt: null, createdAt: { $gte: startDate, $lte: endDate } }
+      ]
+    }).select('completedAt createdAt durationHours');
 
-    const results = await Task.aggregate(pipeline);
-    
-    // Create map of date to hours
+    // Group by local date
     const tasksByDate = {};
-    results.forEach(item => {
-      tasksByDate[item._id] = item.hours;
+    tasks.forEach(task => {
+      const dateToUse = task.completedAt || task.createdAt;
+      const localDate = new Date(dateToUse);
+      const dateStr = getLocalDateString(localDate);
+      
+      if (!tasksByDate[dateStr]) {
+        tasksByDate[dateStr] = 0;
+      }
+      tasksByDate[dateStr] += task.durationHours || 0;
     });
 
-    // Generate all dates in range
+    // Generate all dates in range with local dates
     const heatmapData = [];
-    const startTime = startDate.getTime();
     for (let i = 0; i < days; i++) {
-      const date = new Date(startTime + i * 24 * 60 * 60 * 1000);
-      const dateStr = date.toISOString().split('T')[0];
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      const dateStr = getLocalDateString(date);
       
       heatmapData.push({
         date: dateStr,
@@ -297,7 +275,10 @@ router.get('/completion', async (req, res) => {
     
     const matchStage = {};
     if (dateRange) {
-      matchStage.createdAt = { $gte: dateRange.startDate, $lte: dateRange.endDate };
+      matchStage.$or = [
+        { completedAt: { $gte: dateRange.startDate, $lte: dateRange.endDate } },
+        { completedAt: null, createdAt: { $gte: dateRange.startDate, $lte: dateRange.endDate } }
+      ];
     }
 
     const totalTasks = await Task.countDocuments(matchStage);
@@ -332,14 +313,15 @@ router.get('/completion', async (req, res) => {
     for (let i = 6; i >= 0; i--) {
       const date = new Date(now);
       date.setDate(date.getDate() - i);
-      const dayStart = new Date(date.setHours(0, 0, 0, 0));
-      const dayEnd = new Date(date.setHours(23, 59, 59, 999));
+      date.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(date);
+      dayEnd.setHours(23, 59, 59, 999);
       
       const dayCompleted = await Task.countDocuments({
         completed: true,
         $or: [
-          { completedAt: { $gte: dayStart, $lte: dayEnd } },
-          { completedAt: null, createdAt: { $gte: dayStart, $lte: dayEnd } }
+          { completedAt: { $gte: date, $lte: dayEnd } },
+          { completedAt: null, createdAt: { $gte: date, $lte: dayEnd } }
         ]
       });
 
@@ -364,11 +346,10 @@ router.get('/completion', async (req, res) => {
 // GET /api/analytics/insights - Get all tasks for insights calculation
 router.get('/insights', async (req, res) => {
   try {
-    // Fetch all completed tasks for insights analysis
     const tasks = await Task.find({ completed: true })
       .select('title category durationHours completedAt createdAt')
       .sort({ completedAt: -1, createdAt: -1 })
-      .limit(500); // Limit to last 500 completed tasks for performance
+      .limit(500);
 
     res.json({ tasks });
   } catch (err) {
@@ -390,20 +371,22 @@ router.get('/streak', async (req, res) => {
       return res.json({
         currentStreak: 0,
         longestStreak: 0,
-        totalDaysActive: 0
+        totalDaysActive: 0,
+        calendar: []
       });
     }
 
-    // Get unique dates (use completedAt or fall back to createdAt)
+    // Get unique dates using local timezone
     const uniqueDates = [...new Set(tasks.map(t => {
       const dateToUse = t.completedAt || t.createdAt;
-      return new Date(dateToUse).toISOString().split('T')[0];
+      const localDate = new Date(dateToUse);
+      return getLocalDateString(localDate);
     }))].sort().reverse();
 
-    // Calculate current streak
+    // Calculate current streak using local dates
     let currentStreak = 0;
-    const today = new Date().toISOString().split('T')[0];
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    const today = getLocalDateString(new Date());
+    const yesterday = getLocalDateString(new Date(Date.now() - 86400000));
     
     if (uniqueDates[0] === today || uniqueDates[0] === yesterday) {
       currentStreak = 1;
@@ -437,18 +420,15 @@ router.get('/streak', async (req, res) => {
       }
     }
 
-    // Generate calendar for last 30 days
+    // Generate calendar for last 30 days using local dates
     const calendar = [];
     const uniqueDatesSet = new Set(uniqueDates);
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - 29); // Last 30 days including today
     
     for (let i = 0; i < 30; i++) {
-      const date = new Date(startDate);
-      date.setDate(startDate.getDate() + i);
-      const dateStr = date.toISOString().split('T')[0];
-      const todayStr = new Date().toISOString().split('T')[0];
+      const date = new Date();
+      date.setDate(date.getDate() - (29 - i)); // Start from 30 days ago
+      const dateStr = getLocalDateString(date);
+      const todayStr = getLocalDateString(new Date());
       
       calendar.push({
         date: dateStr,
