@@ -137,6 +137,65 @@ router.get('/category', async (req, res) => {
 });
 
 // GET /api/analytics/time-distribution - Time of day distribution
+// router.get('/time-distribution', async (req, res) => {
+//   try {
+//     const { range = 30 } = req.query;
+//     const dateRange = getDateRange(range);
+    
+//     const matchStage = { completed: true };
+//     if (dateRange) {
+//       matchStage.$or = [
+//         { completedAt: { $gte: dateRange.startDate, $lte: dateRange.endDate } },
+//         { completedAt: null, createdAt: { $gte: dateRange.startDate, $lte: dateRange.endDate } }
+//       ];
+//     }
+
+//     const tasks = await Task.find(matchStage).select('completedAt createdAt durationHours');
+    
+//     const periodHours = {
+//       'Morning': 0,
+//       'Afternoon': 0,
+//       'Evening': 0,
+//       'Night': 0
+//     };
+
+//     tasks.forEach(task => {
+//       const dateToUse = task.completedAt || task.createdAt;
+//       const localDate = new Date(dateToUse);
+//       const hour = localDate.getHours();
+//       const duration = task.durationHours || 0;
+
+//       if (hour >= 6 && hour < 12) {
+//         periodHours['Morning'] += duration;
+//       } else if (hour >= 12 && hour < 18) {
+//         periodHours['Afternoon'] += duration;
+//       } else if (hour >= 18 && hour < 22) {
+//         periodHours['Evening'] += duration;
+//       } else {
+//         periodHours['Night'] += duration;
+//       }
+//     });
+
+//     const chartData = Object.entries(periodHours).map(([name, hours]) => ({
+//       name,
+//       hours: parseFloat(hours.toFixed(1))
+//     }));
+
+//     const peakTime = chartData.reduce((max, period) => 
+//       period.hours > max.hours ? period : max,
+//       { name: 'N/A', hours: 0 }
+//     );
+
+//     res.json({ chartData, peakTime });
+//   } catch (err) {
+//     console.error('Analytics time-distribution error:', err);
+//     res.status(500).json({ error: 'Server error' });
+//   }
+// });
+
+// server/routes/analytics.js - Replace the entire time-distribution route
+
+// GET /api/analytics/time-distribution - Time of day distribution
 router.get('/time-distribution', async (req, res) => {
   try {
     const { range = 30 } = req.query;
@@ -160,9 +219,11 @@ router.get('/time-distribution', async (req, res) => {
     };
 
     tasks.forEach(task => {
-      const dateToUse = task.completedAt || task.createdAt;
-      const localDate = new Date(dateToUse);
-      const hour = localDate.getHours();
+      const hour = parseInt(new Date(task.completedAt || task.createdAt).toLocaleString('en-US', { 
+        timeZone: 'Asia/Kolkata', 
+        hour: 'numeric', 
+        hour12: false 
+      }));
       const duration = task.durationHours || 0;
 
       if (hour >= 6 && hour < 12) {
