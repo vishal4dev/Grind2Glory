@@ -8,6 +8,10 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -84,8 +88,8 @@ function FloatingOrbs({ isBreakTime }) {
 // Circular timer component
 function CircularTimer({ secondsRemaining, totalSeconds, isRunning, isBreakTime }) {
   const theme = useTheme();
-  const size = 320; // Reduced from 450
-  const strokeWidth = 10; // Reduced from 12
+  const size = 320;
+  const strokeWidth = 10;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const progress = totalSeconds > 0 ? (secondsRemaining / totalSeconds) : 0;
@@ -93,7 +97,6 @@ function CircularTimer({ secondsRemaining, totalSeconds, isRunning, isBreakTime 
 
   const timerColor = isBreakTime ? '#ff6347' : theme.palette.secondary.main;
 
-  // Blinking colon animation
   const [showColon, setShowColon] = useState(true);
   useEffect(() => {
     if (isRunning) {
@@ -120,7 +123,6 @@ function CircularTimer({ secondsRemaining, totalSeconds, isRunning, isBreakTime 
         justifyContent: 'center'
       }}
     >
-      {/* Background circle */}
       <svg
         width={size}
         height={size}
@@ -134,7 +136,6 @@ function CircularTimer({ secondsRemaining, totalSeconds, isRunning, isBreakTime 
           stroke={alpha(timerColor, 0.1)}
           strokeWidth={strokeWidth}
         />
-        {/* Progress circle */}
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -152,13 +153,12 @@ function CircularTimer({ secondsRemaining, totalSeconds, isRunning, isBreakTime 
         />
       </svg>
 
-      {/* Time display */}
       <Box
         sx={{
           display: 'flex',
           alignItems: 'center',
           fontFamily: 'monospace',
-          fontSize: '3.5rem', // Reduced from 5rem
+          fontSize: '3.5rem',
           fontWeight: 700,
           color: timerColor,
           userSelect: 'none'
@@ -253,6 +253,7 @@ export default function CurrentTask() {
   
   const [showConfetti, setShowConfetti] = useState(false);
   const [flashColor, setFlashColor] = useState(null);
+  const [showAutoCompleteDialog, setShowAutoCompleteDialog] = useState(false);
   const prevSecondsRef = useRef(secondsRemaining);
 
   // Redirect if no active task
@@ -264,37 +265,34 @@ export default function CurrentTask() {
   
   // Detect session/break completion and trigger animations
   useEffect(() => {
-    // Session or break just completed (went from 1 to 0)
     if (prevSecondsRef.current === 1 && secondsRemaining === 0) {
       if (isBreakTime) {
-        // Break completed - orange flash
         setFlashColor('#ff6347');
       } else {
-        // Work session completed
         const isLastSession = currentSessionIndex === sessions.length - 1;
         if (isLastSession) {
-          // Task complete - show confetti!
           setShowConfetti(true);
         } else {
-          // Session complete - green flash
           setFlashColor('#22c55e');
         }
       }
       
-      // Clear flash after animation
       setTimeout(() => setFlashColor(null), 500);
     }
     
     prevSecondsRef.current = secondsRemaining;
   }, [secondsRemaining, isBreakTime, currentSessionIndex, sessions.length]);
 
-  // Detect when all sessions are completed (via skip or timer)
+  // FIXED: Auto-complete when all sessions are done
   useEffect(() => {
-    if (completedSessions.length >= sessions.length && sessions.length > 0) {
-      // All sessions complete - show confetti
+    const allComplete = completedSessions.length >= sessions.length && sessions.length > 0;
+    const timerFinished = secondsRemaining === 0 && !isRunning;
+    
+    if (allComplete && timerFinished && activeTask && !showAutoCompleteDialog) {
       setShowConfetti(true);
+      setShowAutoCompleteDialog(true);
     }
-  }, [completedSessions.length, sessions.length]);
+  }, [completedSessions.length, sessions.length, secondsRemaining, isRunning, activeTask, showAutoCompleteDialog]);
 
   if (!activeTask) {
     return null;
@@ -311,10 +309,8 @@ export default function CurrentTask() {
 
   const handleComplete = async () => {
     try {
-      // Show confetti celebration
       setShowConfetti(true);
       
-      // Only update database if it's not a quick timer
       if (!activeTask.isQuickTimer) {
         await api.updateTask(activeTask._id, {
           ...activeTask,
@@ -323,12 +319,8 @@ export default function CurrentTask() {
         });
       }
       
-      // Wait a bit for confetti to show
       setTimeout(() => {
-        // Clear pomodoro state
         completeTask();
-        
-        // Navigate back to home
         navigate('/');
       }, 1500);
     } catch (error) {
@@ -345,6 +337,16 @@ export default function CurrentTask() {
     }
   };
 
+  const handleAutoCompleteConfirm = () => {
+    setShowAutoCompleteDialog(false);
+    handleComplete();
+  };
+
+  const handleAutoCompleteDismiss = () => {
+    setShowAutoCompleteDialog(false);
+    setShowConfetti(false);
+  };
+
   const bgColor = isBreakTime
     ? alpha('#ff6347', 0.03)
     : alpha(theme.palette.secondary.main, 0.03);
@@ -353,7 +355,6 @@ export default function CurrentTask() {
     <>
       <Confetti active={showConfetti} />
       
-      {/* Flash overlay for session/break completion */}
       {flashColor && (
         <Box
           sx={{
@@ -376,6 +377,23 @@ export default function CurrentTask() {
         />
       )}
       
+      {/* Auto-complete dialog */}
+      <Dialog open={showAutoCompleteDialog} onClose={handleAutoCompleteDismiss}>
+        <DialogTitle>🎉 All Sessions Complete!</DialogTitle>
+        <DialogContent>
+          <Typography>
+            You've completed all {totalSessions} Pomodoro sessions for "{activeTask.title}". 
+            Would you like to mark this task as complete?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleAutoCompleteDismiss}>Not Yet</Button>
+          <Button onClick={handleAutoCompleteConfirm} variant="contained" color="success">
+            Mark Complete
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
       <Box
         sx={{
           minHeight: '100vh',
@@ -394,9 +412,9 @@ export default function CurrentTask() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          overflow: 'hidden', // Changed from auto
-          pt: 8, // Reduced from 10
-          pb: 2, // Reduced from 4
+          overflow: 'hidden',
+          pt: 8,
+          pb: 2,
           px: 2
         }}
       >
@@ -409,27 +427,25 @@ export default function CurrentTask() {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: 2, // Reduced from 3
+          gap: 2,
           maxWidth: 800,
           width: '100%',
           maxHeight: '100%',
           overflow: 'hidden'
         }}
       >
-        {/* Task title */}
         <Typography
-          variant="h4" // Changed from h3
+          variant="h4"
           sx={{
             fontWeight: 700,
             textAlign: 'center',
-            mb: 0, // Reduced from 2
+            mb: 0,
             color: 'text.primary'
           }}
         >
           {activeTask.title}
         </Typography>
 
-        {/* Circular timer */}
         <CircularTimer
           secondsRemaining={secondsRemaining}
           totalSeconds={totalSeconds}
@@ -437,7 +453,6 @@ export default function CurrentTask() {
           isBreakTime={isBreakTime}
         />
 
-        {/* Session progress */}
         <SessionProgress
           sessions={sessions}
           currentSessionIndex={currentSessionIndex}
@@ -445,7 +460,6 @@ export default function CurrentTask() {
           isBreakTime={isBreakTime}
         />
 
-        {/* Play/Pause control */}
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', my: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
           <IconButton
             onClick={isRunning ? pause : play}
@@ -498,7 +512,6 @@ export default function CurrentTask() {
           )}
         </Box>
 
-        {/* Overall progress bar */}
         <Box sx={{ width: '100%', maxWidth: 500 }}>
           <Box
             sx={{
@@ -535,7 +548,6 @@ export default function CurrentTask() {
           </Box>
         </Box>
 
-        {/* Action buttons */}
         <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
           <Button
             variant="contained"

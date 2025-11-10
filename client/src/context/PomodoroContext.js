@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useEffect, useRef, useCallback } from 'react';
+import { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import { calculatePomodoroSessions } from '../utils/pomodoroCalculator';
 import { 
   requestNotificationPermission, 
@@ -10,15 +10,15 @@ import {
 const STORAGE_KEY = 'grind2glory_pomodoro_state';
 
 const initialState = {
-  activeTask: null, // The task object currently in focus
-  sessions: [], // Array of session objects
-  currentSessionIndex: 0, // Which session we're on (0-based)
-  isRunning: false, // Is timer actively counting down
-  isBreakTime: false, // Are we in a break period
-  secondsRemaining: 0, // Current countdown value
-  completedSessions: [], // Array of completed session numbers
-  startedAt: null, // Timestamp when current session started
-  pausedAt: null // Timestamp when paused (for calculating elapsed time)
+  activeTask: null,
+  sessions: [],
+  currentSessionIndex: 0,
+  isRunning: false,
+  isBreakTime: false,
+  secondsRemaining: 0,
+  completedSessions: [],
+  startedAt: null,
+  pausedAt: null
 };
 
 const PomodoroContext = createContext(initialState);
@@ -45,53 +45,76 @@ export function PomodoroProvider({ children }) {
       }
     }
 
-    // Cleanup on unmount
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
     };
-  }, [state.isRunning]);
+  }, [state.isRunning, state.secondsRemaining]);
 
-  // Handle session/break transitions
+  // FIXED: Handle session/break transitions when timer hits 0
   useEffect(() => {
-    if (state.isRunning && state.secondsRemaining === 0) {
-      handleSessionComplete();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.secondsRemaining, state.isRunning]);
+    // Only trigger when timer hits exactly 0 and was running
+    if (state.secondsRemaining === 0 && state.sessions.length > 0) {
+      if (state.isBreakTime) {
+        // Break ended - notify and move to next session
+        notifyBreakComplete();
+        
+        const nextSessionIndex = state.currentSessionIndex + 1;
+        const hasNextSession = nextSessionIndex < state.sessions.length;
 
-  const handleSessionComplete = useCallback(() => {
-    if (state.isBreakTime) {
-      // Break ended - notify and pause
-      notifyBreakComplete();
-      dispatch({ type: 'BREAK_COMPLETE' });
-    } else {
-      // Work session ended - notify
-      notifySessionComplete();
-      
-      const currentSession = state.sessions[state.currentSessionIndex];
-      const isLastSession = state.currentSessionIndex === state.sessions.length - 1;
-      
-      if (isLastSession) {
-        // All sessions complete - notify task complete
-        if (state.activeTask) {
-          notifyTaskComplete(state.activeTask.title);
+        if (hasNextSession) {
+          // Move to next session but pause (wait for user)
+          const nextSession = state.sessions[nextSessionIndex];
+          dispatch({ 
+            type: 'MOVE_TO_NEXT_SESSION',
+            payload: {
+              sessionIndex: nextSessionIndex,
+              workDuration: nextSession.workDuration
+            }
+          });
+        } else {
+          // All sessions complete
+          dispatch({ type: 'ALL_SESSIONS_COMPLETE' });
         }
-        dispatch({ type: 'PAUSE' });
-      } else if (currentSession && currentSession.hasBreak) {
-        // Automatically start break
-        dispatch({ type: 'START_BREAK' });
       } else {
-        // No break - pause
-        dispatch({ type: 'PAUSE' });
+        // Work session ended - notify
+        notifySessionComplete();
+        
+        const currentSession = state.sessions[state.currentSessionIndex];
+        const isLastSession = state.currentSessionIndex === state.sessions.length - 1;
+        
+        // Mark current session as completed
+        const alreadyCompleted = state.completedSessions.includes(state.currentSessionIndex);
+        if (!alreadyCompleted) {
+          dispatch({ 
+            type: 'MARK_SESSION_COMPLETE',
+            payload: state.currentSessionIndex 
+          });
+        }
+        
+        if (isLastSession) {
+          // All sessions complete - notify task complete
+          if (state.activeTask) {
+            notifyTaskComplete(state.activeTask.title);
+          }
+          dispatch({ type: 'ALL_SESSIONS_COMPLETE' });
+        } else if (currentSession && currentSession.hasBreak) {
+          // Automatically start break
+          dispatch({ 
+            type: 'AUTO_START_BREAK',
+            payload: currentSession.breakDuration
+          });
+        } else {
+          // No break - just pause
+          dispatch({ type: 'SESSION_COMPLETE_NO_BREAK' });
+        }
       }
     }
-  }, [state.isBreakTime, state.currentSessionIndex, state.sessions, state.activeTask]);
+  }, [state.secondsRemaining, state.isBreakTime, state.currentSessionIndex, state.sessions, state.completedSessions, state.activeTask]);
 
   // Actions
-  const startPomodoro = useCallback(async (task) => {
-    // Request notification permission on first pomodoro start
+  const startPomodoro = async (task) => {
     await requestNotificationPermission();
     
     const pomodoroData = calculatePomodoroSessions(task.durationHours);
@@ -103,35 +126,36 @@ export function PomodoroProvider({ children }) {
         sessions: pomodoroData.sessions
       }
     });
-  }, []);
+  };
 
-  const play = useCallback(() => {
-    dispatch({ type: 'PLAY' });
-  }, []);
+  const play = () => dispatch({ type: 'PLAY' });
+  const pause = () => dispatch({ type: 'PAUSE' });
+  
+  const skipBreak = () => {
+    const nextSessionIndex = state.currentSessionIndex + 1;
+    const hasNextSession = nextSessionIndex < state.sessions.length;
 
-  const pause = useCallback(() => {
-    dispatch({ type: 'PAUSE' });
-  }, []);
-
-  const skipBreak = useCallback(() => {
-    dispatch({ type: 'SKIP_BREAK' });
-  }, []);
-
-  const skipSession = useCallback(() => {
-    dispatch({ type: 'SKIP_SESSION' });
-  }, []);
-
-  const completeTask = useCallback(() => {
-    dispatch({ type: 'COMPLETE_TASK' });
-  }, []);
-
-  const abandonTask = useCallback(() => {
-    dispatch({ type: 'ABANDON_TASK' });
-  }, []);
-
-  const clearPomodoro = useCallback(() => {
-    dispatch({ type: 'CLEAR_POMODORO' });
-  }, []);
+    if (hasNextSession && state.isBreakTime) {
+      const nextSession = state.sessions[nextSessionIndex];
+      dispatch({ 
+        type: 'MOVE_TO_NEXT_SESSION',
+        payload: {
+          sessionIndex: nextSessionIndex,
+          workDuration: nextSession.workDuration
+        }
+      });
+    }
+  };
+  
+  const skipSession = () => {
+    if (!state.isBreakTime) {
+      dispatch({ type: 'SKIP_CURRENT_SESSION' });
+    }
+  };
+  
+  const completeTask = () => dispatch({ type: 'COMPLETE_TASK' });
+  const abandonTask = () => dispatch({ type: 'ABANDON_TASK' });
+  const clearPomodoro = () => dispatch({ type: 'CLEAR_POMODORO' });
 
   const value = {
     ...state,
@@ -206,87 +230,101 @@ function pomodoroReducer(state, action) {
       };
     }
 
-    case 'START_BREAK': {
+    case 'MARK_SESSION_COMPLETE': {
+      return {
+        ...state,
+        completedSessions: [...state.completedSessions, action.payload]
+      };
+    }
+
+    case 'AUTO_START_BREAK': {
+      return {
+        ...state,
+        isBreakTime: true,
+        isRunning: true,
+        secondsRemaining: action.payload * 60,
+        startedAt: Date.now()
+      };
+    }
+
+    case 'SESSION_COMPLETE_NO_BREAK': {
+      return {
+        ...state,
+        isRunning: false,
+        pausedAt: Date.now()
+      };
+    }
+
+    case 'MOVE_TO_NEXT_SESSION': {
+      return {
+        ...state,
+        currentSessionIndex: action.payload.sessionIndex,
+        isBreakTime: false,
+        isRunning: false,
+        secondsRemaining: action.payload.workDuration * 60,
+        pausedAt: Date.now()
+      };
+    }
+
+    case 'ALL_SESSIONS_COMPLETE': {
+      return {
+        ...state,
+        isRunning: false,
+        pausedAt: Date.now()
+      };
+    }
+
+    case 'SKIP_CURRENT_SESSION': {
       const currentSession = state.sessions[state.currentSessionIndex];
       
-      // Only add to completed if not already there
+      // Mark as completed
       const alreadyCompleted = state.completedSessions.includes(state.currentSessionIndex);
       const newCompletedSessions = alreadyCompleted 
         ? state.completedSessions 
         : [...state.completedSessions, state.currentSessionIndex];
       
-      return {
-        ...state,
-        isBreakTime: true,
-        isRunning: true,
-        secondsRemaining: currentSession.breakDuration * 60,
-        completedSessions: newCompletedSessions,
-        startedAt: Date.now()
-      };
-    }
-
-    case 'BREAK_COMPLETE': {
-      const nextSessionIndex = state.currentSessionIndex + 1;
-      const hasNextSession = nextSessionIndex < state.sessions.length;
-
-      if (hasNextSession) {
-        // Move to next session but pause (wait for user)
-        const nextSession = state.sessions[nextSessionIndex];
+      // Check if all sessions are now complete
+      const allSessionsComplete = newCompletedSessions.length >= state.sessions.length;
+      
+      if (allSessionsComplete) {
+        if (state.activeTask) {
+          notifyTaskComplete(state.activeTask.title);
+        }
         return {
           ...state,
-          currentSessionIndex: nextSessionIndex,
-          isBreakTime: false,
           isRunning: false,
-          secondsRemaining: nextSession.workDuration * 60,
+          completedSessions: newCompletedSessions,
           pausedAt: Date.now()
+        };
+      }
+      
+      // Check if there's a break after this session
+      if (currentSession.hasBreak) {
+        return {
+          ...state,
+          isBreakTime: true,
+          isRunning: true,
+          secondsRemaining: currentSession.breakDuration * 60,
+          completedSessions: newCompletedSessions,
+          startedAt: Date.now()
         };
       } else {
-        // All sessions complete
-        return {
-          ...state,
-          isRunning: false,
-          isBreakTime: false,
-          pausedAt: Date.now()
-        };
-      }
-    }
-
-    case 'SKIP_BREAK': {
-      const nextSessionIndex = state.currentSessionIndex + 1;
-      const hasNextSession = nextSessionIndex < state.sessions.length;
-
-      if (hasNextSession && state.isBreakTime) {
-        const nextSession = state.sessions[nextSessionIndex];
-        return {
-          ...state,
-          currentSessionIndex: nextSessionIndex,
-          isBreakTime: false,
-          isRunning: false,
-          secondsRemaining: nextSession.workDuration * 60,
-          pausedAt: Date.now()
-        };
-      }
-      return state;
-    }
-
-    case 'SKIP_SESSION': {
-      const currentSession = state.sessions[state.currentSessionIndex];
-      
-      if (!state.isBreakTime && currentSession) {
-        // Only add to completed if not already there
-        const alreadyCompleted = state.completedSessions.includes(state.currentSessionIndex);
-        const newCompletedSessions = alreadyCompleted 
-          ? state.completedSessions 
-          : [...state.completedSessions, state.currentSessionIndex];
+        // No break, move to next session
+        const nextSessionIndex = state.currentSessionIndex + 1;
+        const hasNextSession = nextSessionIndex < state.sessions.length;
         
-        // Check if all sessions are now complete
-        const allSessionsComplete = newCompletedSessions.length >= state.sessions.length;
-        
-        if (allSessionsComplete) {
-          // Task complete - notify and pause
-          if (state.activeTask) {
-            notifyTaskComplete(state.activeTask.title);
-          }
+        if (hasNextSession) {
+          const nextSession = state.sessions[nextSessionIndex];
+          return {
+            ...state,
+            currentSessionIndex: nextSessionIndex,
+            isBreakTime: false,
+            isRunning: false,
+            secondsRemaining: nextSession.workDuration * 60,
+            completedSessions: newCompletedSessions,
+            pausedAt: Date.now()
+          };
+        } else {
           return {
             ...state,
             isRunning: false,
@@ -294,46 +332,7 @@ function pomodoroReducer(state, action) {
             pausedAt: Date.now()
           };
         }
-        
-        // Check if there's a break after this session
-        if (currentSession.hasBreak) {
-          // Start the break
-          return {
-            ...state,
-            isBreakTime: true,
-            isRunning: true,
-            secondsRemaining: currentSession.breakDuration * 60,
-            completedSessions: newCompletedSessions,
-            startedAt: Date.now()
-          };
-        } else {
-          // No break, move to next session
-          const nextSessionIndex = state.currentSessionIndex + 1;
-          const hasNextSession = nextSessionIndex < state.sessions.length;
-          
-          if (hasNextSession) {
-            const nextSession = state.sessions[nextSessionIndex];
-            return {
-              ...state,
-              currentSessionIndex: nextSessionIndex,
-              isBreakTime: false,
-              isRunning: false,
-              secondsRemaining: nextSession.workDuration * 60,
-              completedSessions: newCompletedSessions,
-              pausedAt: Date.now()
-            };
-          } else {
-            // All sessions complete
-            return {
-              ...state,
-              isRunning: false,
-              completedSessions: newCompletedSessions,
-              pausedAt: Date.now()
-            };
-          }
-        }
       }
-      return state;
     }
 
     case 'COMPLETE_TASK':
@@ -353,7 +352,6 @@ function loadStateFromStorage() {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      // Auto-pause for safety on page reload
       return {
         ...parsed,
         isRunning: false,
@@ -368,7 +366,6 @@ function loadStateFromStorage() {
 
 function saveStateToStorage(state) {
   try {
-    // Only save if there's an active task
     if (state.activeTask) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } else {
